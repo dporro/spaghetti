@@ -1,5 +1,6 @@
 * Dependencies
 
+pyglet : Ubuntu's version
 fos : https://github.com/fos/fos.git
 dipy: packaged from neurodebian
 scikit-learn (just for MBKM): packaged from neurodebian
