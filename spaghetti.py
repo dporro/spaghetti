@@ -14,9 +14,9 @@ pyglet.options['debug_trace'] = debug
 
 import numpy as np
 import nibabel as nib
-from dipy.viz.fos.streamshow import StreamlineLabeler
-from dipy.viz.fos.streamwindow import Window
-from dipy.viz.fos.guillotine import Guillotine
+from streamshow import StreamlineLabeler
+from streamwindow import Window
+from guillotine import Guillotine
 from dipy.io.dpy import Dpy
 from fos import Scene
 import pickle
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     
     subject = '05'
     num_M_seeds = 1
-    directory_name='/home/dporro/'
+    directory_name='./'
 
     #load T1 volume registered in MNI space
     t1_filename = directory_name+'data/subj_'+subject+'/MPRAGE_32/T1_flirt_out.nii.gz'
