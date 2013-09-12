@@ -14,12 +14,10 @@ pyglet.options['debug_trace'] = debug
 
 import numpy as np
 import nibabel as nib
-from dipy.segment.quickbundles import QuickBundles
 from dipy.viz.fos.streamshow import StreamlineLabeler
 from dipy.viz.fos.streamwindow import Window
 from dipy.viz.fos.guillotine import Guillotine
 from dipy.io.dpy import Dpy
-from dipy.tracking.metrics import downsample
 from fos import Scene
 import pickle
 from streamshow import compute_buffers, compute_buffers_representatives, mbkm_wrapper
@@ -42,9 +40,6 @@ if __name__ == '__main__':
     subject = '05'
     num_M_seeds = 1
     directory_name='/home/dporro/'
-    qb_threshold = 30 # in mm
-    qb_n_points = 12
-    downsampling = False
 
     #load T1 volume registered in MNI space
     t1_filename = directory_name+'data/subj_'+subject+'/MPRAGE_32/T1_flirt_out.nii.gz'
@@ -70,27 +65,17 @@ if __name__ == '__main__':
         # T = T[:5000]
         # T = np.array(T, dtype=np.object)
 
-        if downsampling:
-            print "Dowsampling."
-            T = downsample(t, qb_n_points)
-
         print "Centering."
         T = [t - np.array(data.shape[:3]) / 2.0 for t in T]
             
         print "Rotating."
         axis = np.array([1, 0, 0])
         theta = - 90.
-        if downsampling:
-            T = np.dot(T,rotation_matrix(axis, theta))
-        else:
-            T = [np.dot(t,rotation_matrix(axis, theta)) for t in T]
+        T = [np.dot(t,rotation_matrix(axis, theta)) for t in T]
             
         axis = np.array([0, 1, 0])
         theta = 180.
-        if downsampling:
-            T = np.dot(T, rotation_matrix(axis, theta))
-        else:
-            T = [np.dot(t, rotation_matrix(axis, theta)) for t in T]
+        T = [np.dot(t, rotation_matrix(axis, theta)) for t in T]
 
         T = np.array(T, dtype=np.object)
         print "Computing buffers."
@@ -134,46 +119,6 @@ if __name__ == '__main__':
         clusters = mbkm_wrapper(full_dissimilarity_matrix, n_clusters, streamlines_ids)
         print "Saving", clusters_filename
         pickle.dump(clusters, open(clusters_filename,'w'))
-
-
-    # # load initial QuickBundles with threshold qb_threshold
-    # fpkl = directory_name+'data/subj_'+subject+'/101_32/DTI/qb_gqi_'+str(num_M_seeds)+'M_linear_'+str(qb_threshold)+'.pkl'
-    # clusters_filename = directory_name+'data/subj_'+subject+'/101_32/DTI/qb_gqi_'+str(num_M_seeds)+'M_linear_'+str(qb_threshold)+'_clusters.pickle'
-    # try:
-    #     print "Loading", clusters_filename
-    #     clusters = pickle.load(open(clusters_filename))
-    # except IOError:
-    #     try:
-    #         print "Loading", fpkl
-    #         qb = pickle.load(open(fpkl))
-    #     except IOError:
-    #         print "Computing QuickBundles."
-    #         qb = QuickBundles(T, qb_threshold, qb_n_points)
-    #         print "Saving", fpkl
-    #         pickle.dump(qb, open(fpkl, 'w'))
-            
-    #     tmpa, qb_internal_id = qb.exemplars() # this function call is necessary to let qb compute qb.exempsi
-    #     # WRONG!
-    #     # clusters = dict(zip(representative_ids, [set(qb.label2tracksids(i)) for i, rid in enumerate(representative_ids)]))
-
-    #     # Note that the following code to construct 'clusters' works
-    #     # on the assumption that the actual implementation of
-    #     # qb.exemplars() returns the exemplars in the same order than
-    #     # they are returned by qb.clustering.keys(). Unfortunately I
-    #     # found no other way to build the 'clusters' dictionary which
-    #     # associates the representative ID with the set of IDs of the
-    #     # represented streamlines, where ID(s) are always referred to
-    #     # the order in which each streamline appears in the
-    #     # tractography. It could be meaningful to fix the qb code
-    #     # accordingly.
-    #     clusters = {}
-    #     for i, clusterid in enumerate(qb.clustering.keys()):
-    #         indices = qb.clustering[clusterid]['indices']
-    #         clusters[indices[qb_internal_id[i]]] = set(indices)
-
-    #     print "Saving", clusters_filename
-    #     pickle.dump(clusters, open(clusters_filename,'w'))
-
 
             
     # create the interaction system for tracks 
