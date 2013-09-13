@@ -1,5 +1,5 @@
 import pyglet
-debug = True
+debug = False
 pyglet.options['debug_gl'] = debug
 pyglet.options['debug_gl_trace'] = debug
 pyglet.options['debug_gl_trace_args'] = debug
@@ -23,16 +23,6 @@ import pickle
 from streamshow import compute_buffers, compute_buffers_representatives, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
-
-
-def rotation_matrix(axis, theta_degree):
-    theta = 1. * theta_degree * np.pi / 180.
-    axis = 1. * axis / np.sqrt(np.dot(axis,axis))
-    a = np.cos(theta / 2)
-    b, c, d = - axis * np.sin(theta / 2)
-    return np.array([[a*a + b*b - c*c - d*d, 2*(b*c - a*d), 2*(b*d + a*c)],
-                     [2*(b*c + a*d), a*a + c*c - b*b - d*d, 2*(c*d - a*b)],
-                     [2*(b*d - a*c), 2*(c*d + a*b), a*a + d*d - b*b - c*c]])
 
 
 if __name__ == '__main__':
@@ -62,21 +52,6 @@ if __name__ == '__main__':
         T = dpr.read_tracks()
         dpr.close()
     
-        # T = T[:5000]
-        # T = np.array(T, dtype=np.object)
-
-        print "Centering."
-        T = [t - np.array(data.shape[:3]) / 2.0 for t in T]
-            
-        print "Rotating."
-        axis = np.array([1, 0, 0])
-        theta = - 90.
-        T = [np.dot(t,rotation_matrix(axis, theta)) for t in T]
-            
-        axis = np.array([0, 1, 0])
-        theta = 180.
-        T = [np.dot(t, rotation_matrix(axis, theta)) for t in T]
-
         T = np.array(T, dtype=np.object)
         print "Computing buffers."
         buffers = compute_buffers(T, alpha=1.0, save=True, filename=buffers_filename)
@@ -124,6 +99,8 @@ if __name__ == '__main__':
     # create the interaction system for tracks 
     tl = StreamlineLabeler('Bundle Picker',
                            buffers, clusters,
+                           vol_shape=data.shape[:3], 
+                           affine=affine,
                            clustering_parameter=len(clusters),
                            clustering_parameter_max=len(clusters),
                            full_dissimilarity_matrix=full_dissimilarity_matrix)

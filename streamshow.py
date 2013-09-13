@@ -4,6 +4,7 @@ import numpy as np
 from fos import Actor
 from fos.modelmat import screen_to_model
 import fos.interact.collision as cll
+from fos.coords import img_to_ras_coords, from_matvec
 
 # pyglet module
 from pyglet.gl import *
@@ -76,6 +77,29 @@ def streamline2rgb(streamline):
     # which swaps green and blu. So here is an ugly fix:
     tmp[1], tmp[2] = tmp[2], tmp[1]
     return tmp
+
+def apply_transformation(ijk, affine):
+    """ Apply a 4x4 affine transformation
+
+    Parameters
+    ----------
+    ijk : array, shape (N, 3)
+        image coordinates
+    affine : array, shape (4, 4)
+        transformation matrix 
+
+    Returns
+    -------
+    xyz : array, shape (N, 3)
+        world coordinates in RAS (Neurological Convention)
+
+    """
+
+    ijk = ijk.T
+    ijk1 = np.vstack((ijk, np.ones(ijk.shape[1])))
+    xyz1 = np.dot(affine, ijk1)
+    xyz = xyz1[:-1, :]
+    return xyz.T
 
 
 def compute_colors(streamlines, alpha):
@@ -237,7 +261,16 @@ class StreamlineLabeler(Actor, Manipulator):
         Actor.__init__(self, name) # direct call of the __init__ seems better in case of multiple inheritance
 
         if affine is None: self.affine = np.eye(4, dtype = np.float32)
-        else: self.affine = affine      
+        else: self.affine = affine
+        print affine
+        if vol_shape is not None:
+            I, J, K = vol_shape
+            centershift = img_to_ras_coords(np.array([[I/2., J/2., K/2.]]), affine)
+            centeraffine = from_matvec(np.eye(3), centershift.squeeze())
+            affine[:3,3] = affine[:3, 3] - centeraffine[:3, 3]
+        print affine
+        self.glaffine = (GLfloat * 16)(*tuple(affine.T.ravel()))
+        self.glaff = affine
          
         self.mouse_x=None
         self.mouse_y=None
@@ -275,7 +308,7 @@ class StreamlineLabeler(Actor, Manipulator):
         self.streamlines_colors = buffers['colors']
         self.streamlines_first = buffers['first']
         self.streamlines_count = buffers['count']
-
+        
         print('MBytes %f' % (self.streamlines_buffer.nbytes/2.**20,))
 
         self.hide_representatives = False
@@ -285,9 +318,9 @@ class StreamlineLabeler(Actor, Manipulator):
         
         self.representatives_line_width = representatives_line_width
         self.streamlines_line_width = streamlines_line_width
-
+        
         self.vertices = self.streamlines_buffer # this is apparently requested by Actor
-
+        
         self.color_storage = {}
         # This is the color of a selected representative.
         self.color_selected = np.array([1.0, 1.0, 1.0, 1.0], dtype='f4')
@@ -296,6 +329,7 @@ class StreamlineLabeler(Actor, Manipulator):
         # IS COPY NEEDED HERE????
         self.streamlines_visualized_first = self.streamlines_first.copy()
         self.streamlines_visualized_count = self.streamlines_count.copy()
+        
 
         # Clustering:
         self.clustering_parameter = clustering_parameter
@@ -342,6 +376,7 @@ class StreamlineLabeler(Actor, Manipulator):
             glColorPointer(4,GL_FLOAT,0,self.representatives_colors.ctypes.data)
             glLineWidth(self.representatives_line_width)
             glPushMatrix()
+            glMultMatrixf(self.glaffine)
             if isinstance(self.representatives_first, tuple): print '>> first Tuple'
             if isinstance(self.representatives_count, tuple): print '>> count Tuple'
             glib.glMultiDrawArrays(GL_LINE_STRIP, 
@@ -357,6 +392,7 @@ class StreamlineLabeler(Actor, Manipulator):
             glColorPointer(4,GL_FLOAT,0,self.streamlines_colors.ctypes.data)
             glLineWidth(self.streamlines_line_width)
             glPushMatrix()
+            glMultMatrixf(self.glaffine)
             glib.glMultiDrawArrays(GL_LINE_STRIP, 
                                     self.streamlines_visualized_first.ctypes.data, 
                                     self.streamlines_visualized_count.ctypes.data, 
@@ -465,8 +501,8 @@ class StreamlineLabeler(Actor, Manipulator):
         near = screen_to_model(x, y, 0)
         far = screen_to_model(x, y, 1)
         # Compute distance of representatives from screen and from the line defined by the two points above
-        tmp = np.array([cll.mindistance_segment2track_info(near, far, xyz) \
-                        for xyz in self.representatives])
+        tmp = np.array([cll.mindistance_segment2track_info(near, far, apply_transformation(xyz, self.glaff)) \
+                        for xyz in self.representatives])       
         line_distance, screen_distance = tmp[:,0], tmp[:,1]
         return self.representative_ids_ordered[np.argmin(line_distance + screen_distance)]
 
