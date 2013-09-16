@@ -243,10 +243,11 @@ if __name__ == '__main__':
     random.seed(0)
     np.random.seed(0)
 
+    clustering = clustering_random
     k = 3
 
     streamline_ids = np.arange(10, dtype=np.int)
 
-    initial_clusters = clustering(streamline_ids, k)
+    initial_clusters = clustering(None, k, streamline_ids)
     
     m = Manipulator(initial_clusters, clustering)
