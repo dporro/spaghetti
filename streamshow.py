@@ -302,7 +302,6 @@ class StreamlineLabeler(Actor, Manipulator):
             glPopMatrix()
 
         # plot tractography if necessary:
-        # if self.expand and self.streamlines_visualized_first.size > 0:
         if self.expand and len(self.selected) > 0:
             glVertexPointer(3,GL_FLOAT,0,self.streamlines_buffer.ctypes.data)
             glColorPointer(4,GL_FLOAT,0,self.streamlines_colors.ctypes.data)
