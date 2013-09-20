@@ -130,16 +130,7 @@ def compute_buffers(streamlines, alpha, save=False, filename=None):
     if save:
         print "saving buffers to", filename
         np.savez_compressed(filename, **tmp)
-        # This requires much more storage:
-        # pickle.dump(tmp,
-        #             open(filename, 'w'),
-        #             protocol = pickle.HIGHEST_PROTOCOL)
-
-        # Moreover using the gzip module to add compression makes it
-        # extremely slow.
-        # Moreover the npy/npz format takes care of endianess and
-        # other archicetural tricky issues.
-    return tmp # streamlines_buffer, streamlines_colors, streamlines_first, streamlines_count
+    return tmp
 
 
 # def compute_buffers_representatives_old(buffers, representative_ids):
