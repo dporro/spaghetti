@@ -253,12 +253,8 @@ class StreamlineLabeler(Actor, Manipulator):
 
         self.hide_representatives = False
         self.expand = False        
-        # self.streamlines_visualized_first = self.streamlines_first
-        # self.streamlines_visualized_count = self.streamlines_count
-        
         self.representatives_line_width = representatives_line_width
         self.streamlines_line_width = streamlines_line_width
-        
         self.vertices = self.streamlines_buffer # this is apparently requested by Actor
         
         self.color_storage = {}
@@ -270,30 +266,10 @@ class StreamlineLabeler(Actor, Manipulator):
         self.streamlines_visualized_first = self.streamlines_first.copy()
         self.streamlines_visualized_count = self.streamlines_count.copy()
         
-
         # Clustering:
         self.clustering_parameter = clustering_parameter
         self.clustering_parameter_max = clustering_parameter_max
-        # MBKM:
         self.full_dissimilarity_matrix = full_dissimilarity_matrix
-
-        # #buffer for selected virtual streamlines
-        # self.selected = []
-        # self.old_color = {}
-        # self.hide_representatives = False
-        # self.expand = False
-        # self.verbose = verbose
-        # self.streamlines_visualized_first = np.array([], dtype='i4')
-        # self.streamlines_visualized_count = np.array([], dtype='i4')
-        # self.history = [[self.clusters, self.streamlines, self.streamlines_ids, self.representatives_buffer, self.representatives_colors, self.representatives_first, self.representatives_count, self.streamlines_buffer, self.streamlines_colors, self.streamlines_first, self.streamlines_count]]
-        # #shifting of streamline is necessary for dipy.tracking.vox2track.track_counts
-        # #we also upsample using 30 points in order to increase the accuracy of streamline counts
-        # self.vol_shape = vol_shape
-        # if self.vol_shape !=None:
-        #     self.representatives_shifted = [downsample(t+np.array(self.vol_shape)/2.,30) for t in self.representatives]
-
-        # else:
-        #     self.representatives_shifted = None
 
 
     def draw(self):
