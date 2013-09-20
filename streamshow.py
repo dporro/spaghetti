@@ -371,10 +371,6 @@ class StreamlineLabeler(Actor, Manipulator):
         elif symbol == Qt.Key_R:
             print 'R: Re-cluster'
             root = Tkinter.Tk()
-            # Qb:
-            # root.wm_title('QuickBundles threshold')
-            # default_value = self.clustering_parameter
-            # to = min(self.clustering_parameter_max, len(self.streamline_ids))
 
             # MBKM:
             root.wm_title('k: number of clusters')
@@ -387,10 +383,6 @@ class StreamlineLabeler(Actor, Manipulator):
             root.wait_window()
             self.clustering_parameter = ts.value
             print "clustering_parameter =", self.clustering_parameter
-            # Qb
-            # self.recluster(self.clustering_parameter, buffer2coordinates(self.streamlines_buffer,
-            #                                                              self.streamlines_first,
-            #                                                              self.streamlines_count))
 
             # MBKM:
             self.recluster(self.clustering_parameter, data=self.full_dissimilarity_matrix)
