@@ -221,9 +221,6 @@ class StreamlineLabeler(Actor, Manipulator):
         self.buffers = buffers
 
         self.clusters = clusters
-        # Qb:
-        # Manipulator.__init__(self, initial_clusters=clusters, clustering_function=qb_wrapper)
-
         # MBKM:
         Manipulator.__init__(self, initial_clusters=clusters, clustering_function=mbkm_wrapper)
 
