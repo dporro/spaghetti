@@ -321,15 +321,12 @@ class StreamlineLabeler(Actor, Manipulator):
         glDisable(GL_LINE_SMOOTH)
 
 
+    # DO WE NEED THIS METHOD?
     def process_messages(self,messages):
         msg=messages['key_pressed']
-        #print 'Processing messages in actor', self.name, 
-        #' key_press message ', msg
         if msg!=None:
             self.process_keys(msg,None)
         msg=messages['mouse_position']            
-        #print 'Processing messages in actor', self.name, 
-        #' mouse_pos message ', msg
         if msg!=None:
             self.process_mouse_position(*msg)
 
@@ -337,14 +334,6 @@ class StreamlineLabeler(Actor, Manipulator):
     def process_mouse_position(self, x, y):
         self.mouse_x = x
         self.mouse_y = y
-
-
-    # def process_pickray(self,near,far):
-    #     pass
-
-
-    # def update(self,dt):
-    #     pass
 
 
     def process_keys(self, symbol, modifiers):
