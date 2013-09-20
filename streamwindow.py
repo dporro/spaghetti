@@ -1,3 +1,4 @@
+import os
 from PySide import QtCore, QtGui, QtOpenGL
 
 from fos.vsml import vsml
@@ -112,10 +113,10 @@ class RightPanel(QtGui.QWidget):
         self.parent.glWidget.setFocus()
 
 
-class Window(QtGui.QWidget):
+class Window(QtGui.QMainWindow):
 
     def __init__(self, parent = None, 
-                    caption = "fos", 
+                    caption = " ", 
                     width = 640, 
                     height = 480,
                     bgcolor = (0,0,0), 
@@ -139,17 +140,20 @@ class Window(QtGui.QWidget):
             between 0 and 1
         """
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
-        QtGui.QWidget.__init__(self, parent)
+        QtGui.QMainWindow.__init__(self, parent)
         self.glWidget = GLWidget(parent = self, 
                                     width = width, 
                                     height = height,
                                     bgcolor = bgcolor, 
                                     enable_light = enable_light)
         
-        
+              
+        self.createActions()
         rightPanel = RightPanel(self)
         mainLayout = QtGui.QHBoxLayout()
         mainLayout.addWidget(self.glWidget)
+        self.setCentralWidget(self.glWidget)
+        self.createMenus()
 
         if right_panel:
             mainLayout.addWidget(rightPanel)
@@ -200,7 +204,68 @@ class Window(QtGui.QWidget):
 
     def add_scene(self, scene):
         self.glWidget.world.add_scene( scene )
+        
+    def saveFile(self):
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save File', os.getenv('./'))
+        f = open(filename, 'w')
+        filedata = self.text.toPlainText()
+        f.write(filedata)
+        f.close()
+        
+    def openDirectoryDialog(self):
+        """
+        Opens a dialog to allow user to choose a directory
+        """
+        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
+        d = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
+        self.label.setText(d)
+        
+    def createMenus(self):
+        self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(self.openAct)
+        self.fileMenu.addAction(self.saveAct)
+        self.fileMenu.addSeparator()
+        self.fileMenu.addAction(self.exitAct)
 
+        self.editMenu = self.menuBar().addMenu("&Edit")
+#        self.editMenu.addAction(self.undoAct)
+#        self.editMenu.addAction(self.redoAct)
+#        self.editMenu.addSeparator()
+#        self.editMenu.addAction(self.cutAct)
+#        self.editMenu.addAction(self.copyAct)
+#        self.editMenu.addAction(self.pasteAct)
+        self.editMenu.addSeparator()
+
+    def createActions(self):
+        self.openAct = QtGui.QAction("&Open...", self,
+                shortcut=QtGui.QKeySequence.Open,
+                statusTip="Open an existing file", triggered=self.openDirectoryDialog)
+
+        self.saveAct = QtGui.QAction("&Save", self,
+                shortcut=QtGui.QKeySequence.Save,
+                statusTip="Save the document to disk", triggered=self.saveFile)
+
+#        self.printAct = QtGui.QAction("&Print...", self,
+#                shortcut=QtGui.QKeySequence.Print,
+#                statusTip="Print the document", triggered=self.print_)
+
+        self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
+                statusTip="Exit the application", triggered=self.close)
+#
+#        self.undoAct = QtGui.QAction("&Undo", self,
+#                shortcut=QtGui.QKeySequence.Undo,
+#                statusTip="Undo the last operation", triggered=self.undo)
+#
+#        self.redoAct = QtGui.QAction("&Redo", self,
+#                shortcut=QtGui.QKeySequence.Redo,
+#                statusTip="Redo the last operation", triggered=self.redo)
+
+#        self.aboutQtAct = QtGui.QAction("About &Spaghetti", self,
+#                statusTip="Show the Qt library's About box",
+#                triggered=self.aboutQt)
+#        self.aboutQtAct.triggered.connect(QtGui.qApp.aboutQt)
+
+        
     def set_camera(self, camera):
         self.glWidget.world.camera = camera
 

@@ -12,6 +12,7 @@ pyglet.options['debug_font'] = debug
 pyglet.options['debug_x11'] = debug
 pyglet.options['debug_trace'] = debug
 
+import sys
 import numpy as np
 import nibabel as nib
 from streamshow import StreamlineLabeler
@@ -20,9 +21,10 @@ from guillotine import Guillotine
 from dipy.io.dpy import Dpy
 from fos import Scene
 import pickle
-from streamshow import compute_buffers, compute_buffers_representatives, mbkm_wrapper
+from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
+from PyQt4 import QtCore, QtGui
 
 
 if __name__ == '__main__':
@@ -110,16 +112,16 @@ if __name__ == '__main__':
                 width = 1200, 
                 height = 800, 
                 bgcolor = (.5, .5, 0.9) )
-
-    scene = Scene(scenename = 'Main Scene', activate_aabb = False)
-
-    data = np.interp(data, [data.min(), data.max()], [0, 255])    
-    guil = Guillotine('Volume Slicer', data, affine)
-
-    scene.add_actor(guil)
-    scene.add_actor(tl)
-
-    w.add_scene(scene)
-    w.refocus_camera()
+   
+#    scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+#
+#    data = np.interp(data, [data.min(), data.max()], [0, 255])    
+#    guil = Guillotine('Volume Slicer', data, affine)
+#
+#    scene.add_actor(guil)
+#    scene.add_actor(tl)
+#
+#    w.add_scene(scene)
+   # w.refocus_camera()
 
 
