@@ -149,9 +149,10 @@ def compute_buffers_representatives(buffers, representative_ids):
 
 
 def buffer2coordinates(buffer, first, count):
-    """Extract an array of streamlines' coordinates from representative_buffers.
+    """Extract an array of streamlines' coordinates from a buffer.
 
-    This is meant mainly when the input 'buffers' is 'representative_buffers'.
+    This is meant mainly when the input 'buffers' is
+    'representative_buffers'.
     """    
     return np.array([buffer[first[i]:first[i]+count[i]].astype(np.object) \
                      for i in range(len(first))])
