@@ -158,33 +158,6 @@ def buffer2coordinates(buffer, first, count):
                      for i in range(len(first))])
 
 
-def qb_wrapper(data, qb_threshold, streamlines_ids=None, qb_n_points=None):
-    """A wrapper for qb with the correct API for the Labeler.
-
-    Note: qb_n_points = None means 'do not dowsample again data'.
-    """
-    print "qb_wrapper: starting"
-    if streamlines_ids is None:
-        streamlines_ids = np.arange(len(data), dtype=np.int)
-    else:
-        streamlines_ids = np.sort(list(streamlines_ids)).astype(np.int)
-
-    print "streamlines_ids:", len(streamlines_ids)
-    print "data:", data.shape
-    print "Calling QuickBundles."
-    qb = QuickBundles(data, qb_threshold, qb_n_points)
-    tmpa, qb_internal_id = qb.exemplars() # this function call is necessary to let qb compute qb.exempsi
-    clusters = {}
-    print "Creating new clusters dictionary"
-    for i, clusterid in enumerate(qb.clustering.keys()):
-        indices = streamlines_ids[qb.clustering[clusterid]['indices']]
-        tmp = indices[qb_internal_id[i]]
-        clusters[tmp] = set(list(indices))
-        print tmp, '->', len(clusters[tmp])
-    return clusters
-
-
-
 def mbkm_wrapper(full_dissimilarity_matrix, n_clusters, streamlines_ids):
     """Wrapper of MBKM with API compatible to the Manipulator.
 
