@@ -205,13 +205,11 @@ class StreamlineLabeler(Actor, Manipulator):
 
         if affine is None: self.affine = np.eye(4, dtype = np.float32)
         else: self.affine = affine
-        print affine
         if vol_shape is not None:
             I, J, K = vol_shape
             centershift = img_to_ras_coords(np.array([[I/2., J/2., K/2.]]), affine)
             centeraffine = from_matvec(np.eye(3), centershift.squeeze())
             affine[:3,3] = affine[:3, 3] - centeraffine[:3, 3]
-        print affine
         self.glaffine = (GLfloat * 16)(*tuple(affine.T.ravel()))
         self.glaff = affine
          
