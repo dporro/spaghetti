@@ -133,24 +133,6 @@ def compute_buffers(streamlines, alpha, save=False, filename=None):
     return tmp
 
 
-# def compute_buffers_representatives_old(buffers, representative_ids):
-#     """Compute OpenGL buffers for representatives from tractography
-#     buffers.
-#     """
-#     print "Creating buffers for representatives."
-#     count = buffers['count'][representative_ids].astype('i4')
-#     first = np.concatenate([[0], np.cumsum(count).astype('i4')])
-#     tmp = np.zeros(buffers['buffer'].shape[0], dtype=np.bool)
-#     for i, fid in enumerate(first):
-#         tmp[fid:fid+buffers['count'][i]] = True
-        
-#     representative_buffers = {'buffer': np.ascontiguousarray(buffers['buffer'][tmp], dtype='f4'),
-#                               'colors': np.ascontiguousarray(buffers['colors'][tmp], dtype='f4'),
-#                               'count': np.ascontiguousarray(count),
-#                               'first': np.ascontiguousarray(first)}
-#     return representative_buffers
-
-
 def compute_buffers_representatives(buffers, representative_ids):
     """Compute OpenGL buffers for representatives from tractography
     buffers.
