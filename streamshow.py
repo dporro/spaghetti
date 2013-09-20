@@ -196,8 +196,8 @@ class StreamlineLabeler(Actor, Manipulator):
     """The Labeler for streamlines.
     """
     def __init__(self, name, buffers, clusters, representative_buffers=None, colors=None, vol_shape=None, representatives_line_width=5.0, streamlines_line_width=2.0, representatives_alpha=1.0, streamlines_alpha=1.0, affine=None, verbose=False, clustering_parameter=None, clustering_parameter_max=None, full_dissimilarity_matrix=None):
-        """StreamlineLabeler is meant to explore and select subsets of the
-        streamlines. The exploration occurs through QuickBundles (qb) in
+        """StreamlineLabeler is meant to explore and select subsets of
+        the streamlines. The exploration occurs through clustering in
         order to simplify the scene.
         """
         # super(StreamlineLabeler, self).__init__(name)
