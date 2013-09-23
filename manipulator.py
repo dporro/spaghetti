@@ -65,7 +65,7 @@ class Manipulator(object):
     def select_action(self, representative_id):
         """This is the actual action to perform in the application.
         """
-        raise NotImplementedError
+        pass
 
 
     def unselect(self, representative_id):
@@ -81,7 +81,7 @@ class Manipulator(object):
     def unselect_action(self, representative_id):
         """This is the actual action to perform in the application.
         """
-        raise NotImplementedError
+        pass
 
 
     def select_toggle(self, representative_id):
@@ -105,7 +105,7 @@ class Manipulator(object):
 
 
     def select_all_action(self):
-        raise NotImplementedError
+        pass
         
 
     def unselect_all(self):
@@ -115,7 +115,7 @@ class Manipulator(object):
         
 
     def unselect_all_action(self):
-        raise NotImplementedError
+        pass
         
 
     def select_all_toggle(self):
@@ -137,7 +137,7 @@ class Manipulator(object):
 
 
     def remove_selected_action(self):
-        raise NotImplementedError
+        pass
         
 
     def remove_unselected(self):
@@ -152,7 +152,7 @@ class Manipulator(object):
 
 
     def remove_unselected_action(self):
-        raise NotImplementedError
+        pass
         
 
     def recluster(self, clustering_parameter, data=None):
@@ -169,7 +169,7 @@ class Manipulator(object):
 
 
     def recluster_action(self):
-        raise NotImplementedError
+        pass
 
 
     def invert(self):
@@ -181,7 +181,7 @@ class Manipulator(object):
 
 
     def invert_action(self):
-        raise NotImplementedError
+        pass
 
 
     def show_representatives(self):
@@ -207,7 +207,7 @@ class Manipulator(object):
 
 
     def expand_collapse_selected_action(self):
-        raise NotImplementedError
+        pass
         
 
     def replay_history(self, until=None):
@@ -251,3 +251,37 @@ if __name__ == '__main__':
     initial_clusters = clustering(None, k, streamline_ids)
     
     m = Manipulator(initial_clusters, clustering)
+
+    print "Initial setting:"
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    print "Select 3 and 6:"
+    m.select_toggle(3)
+    m.select_toggle(6)
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    print "Invert selection:"
+    m.invert()
+    print "clusters:", m.clusters
+    print "selected:", m.selected    
+    print "Remove unselected:"
+    m.remove_unselected()
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    print "Re-cluster into 2 clusters:"
+    m.recluster(2)
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    print "Select cluster 8:"
+    m.select_toggle(8)
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    print "Re-cluster into 2 clusters:"
+    print "Remove unselected:"
+    m.remove_unselected()
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    m.recluster(2)
+    print "clusters:", m.clusters
+    print "selected:", m.selected
+    
