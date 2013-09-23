@@ -1,9 +1,11 @@
 import os
+import sys
 from PySide import QtCore, QtGui, QtOpenGL
 
 from fos.vsml import vsml
 from fos.world import *
 from fos.actor import *
+from spaghetti import Spaghetti
 
 try:
     from pyglet.gl import *
@@ -111,18 +113,21 @@ class RightPanel(QtGui.QWidget):
         self.vol.show_k = not self.vol.show_k
         self.parent.glWidget.updateGL()
         self.parent.glWidget.setFocus()
+        
+
 
 
 class Window(QtGui.QMainWindow):
 
+
     def __init__(self, parent = None, 
-                    caption = " ", 
+                    caption = "fos", 
                     width = 640, 
                     height = 480,
                     bgcolor = (0,0,0), 
                     fullscreen = False, 
                     dynamic = False, 
-                    enable_light = False, right_panel=False ):
+                    enable_light = False, right_panel=True):
         """ Create a window
 
         Parameters
@@ -142,25 +147,30 @@ class Window(QtGui.QMainWindow):
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
         QtGui.QMainWindow.__init__(self, parent)
         self.glWidget = GLWidget(parent = self, 
-                                    width = width, 
-                                    height = height,
-                                    bgcolor = bgcolor, 
+                                    width = 1200, 
+                                    height = 800,
+                                    bgcolor = (.5, .5, 0.9), 
                                     enable_light = enable_light)
         
-              
-        self.createActions()
+        
         rightPanel = RightPanel(self)
         mainLayout = QtGui.QHBoxLayout()
         mainLayout.addWidget(self.glWidget)
-        self.setCentralWidget(self.glWidget)
-        self.createMenus()
 
         if right_panel:
             mainLayout.addWidget(rightPanel)
+            
+        mainWidget = QtGui.QWidget()
+        mainWidget.setLayout(mainLayout)
 
-        self.setLayout(mainLayout)
-        self.setWindowTitle(self.tr(caption))
+        self.setCentralWidget(mainWidget)
 
+#        self.setLayout(mainLayout)
+        title = 'Streamline Interaction and Segmentation'
+        self.setWindowTitle(self.tr(title))      
+        self.createActions()
+        self.createMenus()
+      
         self.spinCameraTimer = self.timerInit(interval = 30)
         self._spinCameraTimerInit = False
 
@@ -178,6 +188,77 @@ class Window(QtGui.QMainWindow):
         else:
             self.show()
             self.fullscreen = False
+            
+            
+    def saveFile(self):
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save File', os.getenv('./'))
+        f = open(filename, 'w')
+        filedata = self.text.toPlainText()
+        f.write(filedata)
+        f.close()
+        
+    def openStructFile(self):
+        """
+        Opens a dialog to allow user to choose a directory
+        """
+        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
+        self.directorystruct = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
+        print self.directorystruct
+   
+   
+    def openTractFile(self):
+        """
+        Opens a dialog to allow user to choose a directory
+        """
+        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
+        self.directoryTract = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
+        print self.directoryTract
+        spa= Spaghetti(str(self.directorystruct), str(self.directoryTract))
+        
+        scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+
+        scene.add_actor(spa.guil)
+        scene.add_actor(spa.tl)
+
+        self.add_scene(scene)
+        self.refocus_camera()
+        
+    def createMenus(self):
+        self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(self.openStruct)
+        self.fileMenu.addAction(self.openTract)
+        self.fileMenu.addAction(self.saveAct)
+        self.fileMenu.addSeparator()
+        self.fileMenu.addAction(self.exitAct)
+        
+        self.editMenu = self.menuBar().addMenu("&Edit")
+#        self.editMenu.addAction(self.undoAct)
+#        self.editMenu.addAction(self.redoAct)
+#        self.editMenu.addSeparator()
+#        self.editMenu.addAction(self.cutAct)
+#        self.editMenu.addAction(self.copyAct)
+#        self.editMenu.addAction(self.pasteAct)
+        self.editMenu.addSeparator()
+    
+    def createActions(self):
+        self.openStruct = QtGui.QAction("&Open Structure...", self,
+                shortcut=QtGui.QKeySequence.Open,
+                statusTip="Open an existing file", triggered=self.openStructFile)
+                
+        self.openTract = QtGui.QAction("&Open Tractography...", self,
+                shortcut=QtGui.QKeySequence.Open,
+                statusTip="Open an existing file", triggered=self.openTractFile)
+
+        self.saveAct = QtGui.QAction("&Save", self,
+                shortcut=QtGui.QKeySequence.Save,
+                statusTip="Save the document to disk", triggered=self.saveFile)
+
+#        self.printAct = QtGui.QAction("&Print...", self,
+#                shortcut=QtGui.QKeySequence.Print,
+#                statusTip="Print the document", triggered=self.print_)
+
+        self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
+                statusTip="Exit the application", triggered=self.close)
 
     def initSpincamera(self, angle = 0.007 ):
 
@@ -204,68 +285,7 @@ class Window(QtGui.QMainWindow):
 
     def add_scene(self, scene):
         self.glWidget.world.add_scene( scene )
-        
-    def saveFile(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save File', os.getenv('./'))
-        f = open(filename, 'w')
-        filedata = self.text.toPlainText()
-        f.write(filedata)
-        f.close()
-        
-    def openDirectoryDialog(self):
-        """
-        Opens a dialog to allow user to choose a directory
-        """
-        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
-        d = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
-        self.label.setText(d)
-        
-    def createMenus(self):
-        self.fileMenu = self.menuBar().addMenu("&File")
-        self.fileMenu.addAction(self.openAct)
-        self.fileMenu.addAction(self.saveAct)
-        self.fileMenu.addSeparator()
-        self.fileMenu.addAction(self.exitAct)
 
-        self.editMenu = self.menuBar().addMenu("&Edit")
-#        self.editMenu.addAction(self.undoAct)
-#        self.editMenu.addAction(self.redoAct)
-#        self.editMenu.addSeparator()
-#        self.editMenu.addAction(self.cutAct)
-#        self.editMenu.addAction(self.copyAct)
-#        self.editMenu.addAction(self.pasteAct)
-        self.editMenu.addSeparator()
-
-    def createActions(self):
-        self.openAct = QtGui.QAction("&Open...", self,
-                shortcut=QtGui.QKeySequence.Open,
-                statusTip="Open an existing file", triggered=self.openDirectoryDialog)
-
-        self.saveAct = QtGui.QAction("&Save", self,
-                shortcut=QtGui.QKeySequence.Save,
-                statusTip="Save the document to disk", triggered=self.saveFile)
-
-#        self.printAct = QtGui.QAction("&Print...", self,
-#                shortcut=QtGui.QKeySequence.Print,
-#                statusTip="Print the document", triggered=self.print_)
-
-        self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
-                statusTip="Exit the application", triggered=self.close)
-#
-#        self.undoAct = QtGui.QAction("&Undo", self,
-#                shortcut=QtGui.QKeySequence.Undo,
-#                statusTip="Undo the last operation", triggered=self.undo)
-#
-#        self.redoAct = QtGui.QAction("&Redo", self,
-#                shortcut=QtGui.QKeySequence.Redo,
-#                statusTip="Redo the last operation", triggered=self.redo)
-
-#        self.aboutQtAct = QtGui.QAction("About &Spaghetti", self,
-#                statusTip="Show the Qt library's About box",
-#                triggered=self.aboutQt)
-#        self.aboutQtAct.triggered.connect(QtGui.qApp.aboutQt)
-
-        
     def set_camera(self, camera):
         self.glWidget.world.camera = camera
 
@@ -323,6 +343,9 @@ class Window(QtGui.QMainWindow):
         else:
             super(Window, self).keyPressEvent( event )
         self.glWidget.updateGL()
+        
+        
+        
 
 # if event.key() == Qt.Key_O and ( event.modifiers() & Qt.ControlModifier ): 
 # & == bit wise "and"!
@@ -511,4 +534,12 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.world.send_all_messages(self.messages)       
         self.updateGL()
         self.parent.keyPressEvent(event)
+        
+        
+if __name__ == '__main__':
+
+    app = QtGui.QApplication(sys.argv)
+    wind = Window()
+    wind.show()
+    sys.exit(app.exec_()) 
         
