@@ -385,7 +385,15 @@ class StreamlineLabeler(Actor, Manipulator):
             # MBKM:
             self.recluster(self.clustering_parameter, data=self.full_dissimilarity_matrix)
             return
+
+        elif symbol == Qt.Key_B:
+            print "Go Back one step in the history."
+            self.simple_history_back_one_step()
             
+        elif symbol == Qt.Key_F:
+            print "Go one step Forward in the history."
+            self.simple_history_forward_one_step()
+
 
     def get_pointed_representative(self, min_dist=1e-3):
         """Compute the id of the closest streamline to the mouse pointer.
@@ -484,7 +492,7 @@ class StreamlineLabeler(Actor, Manipulator):
 
     def recluster_action(self):
         self.select_all()
-        self.remove_unselected()
+        self.remove_unselected_action()
 
 
 
