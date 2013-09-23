@@ -36,6 +36,7 @@ class Manipulator(object):
         self.initial_clusters = copy.deepcopy(initial_clusters)
         self.history = []
         self.clusters_reset(initial_clusters)
+        self.simple_history_start()
         self.clustering_function = clustering_function
         
 
@@ -148,6 +149,7 @@ class Manipulator(object):
             clusters[representative] = self.clusters[representative]
         self.clusters_reset(clusters)
         self.history.append('remove_unselected()')
+        self.simple_history_store()
         self.remove_unselected_action()
 
 
@@ -165,6 +167,7 @@ class Manipulator(object):
         assert(streamline_ids_new == reduce(set.union, clusters_new.values()))
         self.history.append('recluster('+str(clustering_parameter)+')')
         self.clusters_reset(clusters_new)
+        self.simple_history_store()
         self.recluster_action()
 
 
@@ -222,6 +225,49 @@ class Manipulator(object):
         c = code.compile_command(c)
         exec(c)
         return m
+
+    def simple_history_start(self):
+        """Start simple history.
+        """
+        self.simple_history = [copy.deepcopy(self.clusters)]
+        self.simple_history_pointer = 0
+        print "Simple history started."
+
+
+    def simple_history_store(self):
+        """Store the current clusters into the history. If there are
+        future steps stored in the history, then throw them away
+        first.
+        """
+        if self.simple_history_pointer < len(self.simple_history)-1:
+            print "Removing future steps."
+            self.simple_history = self.simple_history[:self.simple_history_pointer+1]
+
+        print "Appending to the existing simple history."
+        self.simple_history.append(copy.deepcopy(self.clusters))
+        self.simple_history_pointer += 1
+
+    
+    def simple_history_back_one_step(self):
+        """Go back one step into the past.
+        """
+        if self.simple_history_pointer == 0:
+            print "We are at the initial step and cannot go backward."
+        else:
+            self.simple_history_pointer -= 1
+            self.clusters_reset(self.simple_history[self.simple_history_pointer])
+            self.recluster_action()
+        
+
+    def simple_history_forward_one_step(self):
+        """Go one step into the future.
+        """
+        if self.simple_history_pointer == len(self.simple_history)-1:
+            print "We are at the last step and cannot go forward."
+        else:
+            self.simple_history_pointer += 1
+            self.clusters_reset(self.simple_history[self.simple_history_pointer])
+            self.recluster_action()
         
 
     def __str__(self):
