@@ -268,6 +268,31 @@ class Manipulator(object):
             self.simple_history_pointer += 1
             self.clusters_reset(self.simple_history[self.simple_history_pointer])
             self.recluster_action()
+
+
+    def get_state(self):
+        """Create a dictionary from which it is possible to
+        reconstruct the current Manipulator.
+        """
+        state = {}
+        state['clusters'] = copy.deepcopy(self.clusters)
+        state['selected'] = copy.deepcopy(self.selected)
+        state['expand'] = self.expand
+        state['simple_history'] = copy.deepcopy(self.simple_history)
+        state['simple_history_pointer'] = copy.deepcopy(self.simple_history_pointer)
+        return state
+
+
+    def set_state(self, state):
+        """Set the current object with a given state. Useful to
+        serialize the Manipulator to file etc.
+        """
+        self.clusters_reset(state['clusters'])
+        self.selected = state['selected']
+        self.expand = state['expand']
+        self.simple_history = state['simple_history']
+        self.simple_history_pointer = state['simple_history_pointer']
+        self.recluster_action()
         
 
     def __str__(self):
