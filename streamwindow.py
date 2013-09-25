@@ -121,13 +121,10 @@ class Window(QtGui.QMainWindow):
 
 
     def __init__(self, parent = None, 
-                    caption = "fos", 
-                    width = 640, 
-                    height = 480,
                     bgcolor = (0,0,0), 
                     fullscreen = False, 
                     dynamic = False, 
-                    enable_light = False, right_panel=True):
+                    enable_light = False, right_panel=False):
         """ Create a window
 
         Parameters
@@ -146,23 +143,23 @@ class Window(QtGui.QMainWindow):
         """
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
         QtGui.QMainWindow.__init__(self, parent)
+        screenSize= QtGui.qApp.desktop().availableGeometry().size()
         self.glWidget = GLWidget(parent = self, 
-                                    width = 1200, 
-                                    height = 800,
+                                    width = screenSize.width(), 
+                                    height = screenSize.height(),
                                     bgcolor = (.5, .5, 0.9), 
                                     enable_light = enable_light)
-        
-        
-        rightPanel = RightPanel(self)
+                                    
+             
         mainLayout = QtGui.QHBoxLayout()
         mainLayout.addWidget(self.glWidget)
 
         if right_panel:
+            rightPanel = RightPanel(self)
             mainLayout.addWidget(rightPanel)
             
         mainWidget = QtGui.QWidget()
         mainWidget.setLayout(mainLayout)
-
         self.setCentralWidget(mainWidget)
 
 #        self.setLayout(mainLayout)
@@ -191,34 +188,53 @@ class Window(QtGui.QMainWindow):
             
             
     def saveFile(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save File', os.getenv('./'))
-        f = open(filename, 'w')
-        filedata = self.text.toPlainText()
-        f.write(filedata)
-        f.close()
+        """
+        Saves the current session"
+        """
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', os.getcwd(), str("(*.seg)"))
+        self.spa.SaveSegmentation(filename)
+#        f = open(filename, 'w')
+#        filedata = self.text.toPlainText()
+#        f.write(filedata)
+#        f.close()
         
     def openStructFile(self):
         """
-        Opens a dialog to allow user to choose a directory
+        Opens a dialog to allow the user to choose the directory of the structure's file
         """
         flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
         self.directorystruct = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
-        print self.directorystruct
-   
+           
    
     def openTractFile(self):
         """
-        Opens a dialog to allow user to choose a directory
+        Opens a dialog to allow the user to choose the tractography file 
         """
-        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
-        self.directoryTract = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
-        print self.directoryTract
-        spa= Spaghetti(str(self.directorystruct), str(self.directoryTract))
-        
+        filedialog=QtGui.QFileDialog()
+        filedialog.setNameFilter(str("(*.dpy *.trk *.spa)"))
+        fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk *.spa)"))
+
+        self.spa= Spaghetti(str(self.directorystruct), fileTract)
         scene = Scene(scenename = 'Main Scene', activate_aabb = False)
 
-        scene.add_actor(spa.guil)
-        scene.add_actor(spa.tl)
+        scene.add_actor(self.spa.guil)
+        scene.add_actor(self.spa.tl)
+
+        self.add_scene(scene)
+        self.refocus_camera()
+        
+    def OpenSegmSession(self):
+        """
+        Opens a dialog to allow the user to choose a file of a previously saved session
+        """
+        filedialog=QtGui.QFileDialog()
+        filedialog.setNameFilter(str("(*.seg)"))
+        fileSeg = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.seg)"))
+        self.spa= Spaghetti(segmpath=fileSeg)
+        scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+
+        scene.add_actor(self.spa.guil)
+        scene.add_actor(self.spa.tl)
 
         self.add_scene(scene)
         self.refocus_camera()
@@ -227,6 +243,7 @@ class Window(QtGui.QMainWindow):
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.openStruct)
         self.fileMenu.addAction(self.openTract)
+        self.fileMenu.addAction(self.openSeg)
         self.fileMenu.addAction(self.saveAct)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
@@ -248,10 +265,14 @@ class Window(QtGui.QMainWindow):
         self.openTract = QtGui.QAction("&Open Tractography...", self,
                 shortcut=QtGui.QKeySequence.Open,
                 statusTip="Open an existing file", triggered=self.openTractFile)
+                
+        self.openSeg = QtGui.QAction("&Open Segmentation result...", self,
+                shortcut=QtGui.QKeySequence.Open,
+                statusTip="Open an existing segmentation session file", triggered=self.OpenSegmSession)        
 
-        self.saveAct = QtGui.QAction("&Save", self,
+        self.saveAct = QtGui.QAction("&Save segmentation", self,
                 shortcut=QtGui.QKeySequence.Save,
-                statusTip="Save the document to disk", triggered=self.saveFile)
+                statusTip="Save the current segmentation session to disk", triggered=self.saveFile)
 
 #        self.printAct = QtGui.QAction("&Print...", self,
 #                shortcut=QtGui.QKeySequence.Print,
@@ -374,7 +395,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.parent = parent
 
     def minimumSizeHint(self):
-        return QtCore.QSize(50, 50)
+        return QtCore.QSize(self.width - 50, self.height - 50)
 
     def sizeHint(self):
         return QtCore.QSize(self.width, self.height)

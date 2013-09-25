@@ -12,120 +12,146 @@ pyglet.options['debug_font'] = debug
 pyglet.options['debug_x11'] = debug
 pyglet.options['debug_trace'] = debug
 
-import sys
 import numpy as np
 import nibabel as nib
 from streamshow import StreamlineLabeler
 #from streamwindow import Window
 from guillotine import Guillotine
 from dipy.io.dpy import Dpy
-from fos import Scene
 import pickle
 from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
-from PyQt4 import QtCore, QtGui
 
 
 class Spaghetti():
 
-    def __init__(self, structpath="s", tracpath="t"):
-    
-        subject = '05'
-        num_M_seeds = 1
+    def __init__(self, structpath=None, tracpath=None, segmpath=None):
         
-         
-    #load T1 volume registered in MNI space
-        t1_filename = structpath +'/data/subj_'+subject+'/MPRAGE_32/T1_flirt_out.nii.gz'
-        print t1_filename
-        img = nib.load(t1_filename)
+        
+        if segmpath == None:
+            
+            subject = '05'
+            num_M_seeds = 1
+                    
+            self.t1_filename = structpath +'/data/subj_'+subject+'/MPRAGE_32/T1_flirt_out.nii.gz'
+            self.tracpath=tracpath[0]
+                        
+        else:
+            print "Loading saved session file"
+            segmpath=segmpath[0]
+            segm_info = pickle.load(open(segmpath)) 
+            state = segm_info['segmsession']  
+            self.t1_filename=segm_info['structfilename']
+            self.tracpath=segm_info['tractfilename']   
+            
+            
+      #load T1 volume registered in MNI space
+        print "Loading structural information file"
+        img = nib.load(self.t1_filename)
         data = img.get_data()
         affine = img.get_affine()
 
     #load the tracks registered in MNI space
-        tracks_basenane = tracpath +'/data/subj_'+subject+'/101_32/DTI/tracks_gqi_'+str(num_M_seeds)+'M_linear'
-        print tracks_basenane
-        buffers_filename = tracks_basenane+'_buffers.npz'
+        tracks_basename = self.tracpath[:self.tracpath.find(".")]
+        tracks_format = self.tracpath[self.tracpath.find("."):]   
         
-        try:
-            print "Loading", buffers_filename
-            buffers = np.load(buffers_filename)
-        except IOError:
-            print "Buffers not found, recomputing."
-            fdpyw = tracks_basenane+'.dpy'    
-            dpr = Dpy(fdpyw, 'r')
-            print "Loading", fdpyw
-            T = dpr.read_tracks()
-            dpr.close()
-    
-            T = np.array(T, dtype=np.object)
-            print "Computing buffers."
-            buffers = compute_buffers(T, alpha=1.0, save=True, filename=buffers_filename)
-        
-        num_prototypes = 40
-        full_dissimilarity_matrix_filename = tracks_basenane+'_dissimilarity'+str(num_prototypes)+'.npy'
-        try:
-            print "Loading dissimilarity representation:", full_dissimilarity_matrix_filename
-            full_dissimilarity_matrix = np.load(full_dissimilarity_matrix_filename)
-        except IOError:
-            print "Dissimilarity matrix not found."
-            print "Computing dissimilarity representation."
+        if tracks_format == '.spa':
+            self.LoadInfo(self.tracpath)
+            
+        elif tracks_format == '.dpy' or tracks_format == '.trk':
+#            
+            general_info_filename = tracks_basename + '.spa'
+            #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
             try:
-                T
-            except NameError:
-                fdpyw = tracks_basenane+'.dpy'    
-                dpr = Dpy(fdpyw, 'r')
-                print "Loading", fdpyw
+                print "Looking for general information file"
+                self.LoadInfo(general_info_filename)
+            #show a message box
+            
+            except IOError:
+                print "General information not found, loading tractography to recompute buffers and dissimilarity matrix."
+                dpr = Dpy(self.tracpath, 'r')
+                print "Loading", self.tracpath
                 T = dpr.read_tracks()
                 dpr.close()
-    
-            # T = T[:5000]
                 T = np.array(T, dtype=np.object)
-        
-            full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=num_prototypes)
-            print "Saving", full_dissimilarity_matrix_filename
-            np.save(full_dissimilarity_matrix_filename, full_dissimilarity_matrix)
-        
-
-    # load initial MBKM with given n_clusters
-        n_clusters = 150
-        clusters_filename = tracpath+'/data/subj_'+subject+'/101_32/DTI/mbkm_gqi_'+str(num_M_seeds)+'M_linear_'+str(n_clusters)+'_clusters.pickle'
-        try:
-            print "Loading", clusters_filename
-            clusters = pickle.load(open(clusters_filename))
-        except IOError:
-            print "MBKM clustering not found."
-            print "Computing MBKM."
-            self.streamlines_ids = np.arange(full_dissimilarity_matrix.shape[0], dtype=np.int)
-            clusters = mbkm_wrapper(full_dissimilarity_matrix, n_clusters, self.streamlines_ids)
-            print "Saving", clusters_filename
-            pickle.dump(clusters, open(clusters_filename,'w'))
-
             
+                print "Computing buffers."
+                self.buffers = compute_buffers(T, alpha=1.0, save=False)
+                
+                print "Computing dissimilarity representation."
+                self.num_prototypes = 40
+                self.full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
+                
+                # compute initial MBKM with given n_clusters
+                print "Computing MBKM"
+                n_clusters = 150
+                streamlines_ids = np.arange(self.full_dissimilarity_matrix.shape[0], dtype=np.int)
+                self.clusters = mbkm_wrapper(self.full_dissimilarity_matrix, n_clusters, streamlines_ids)
+                
+                
+                print "Saving computed information from tractography"
+                self.SaveInfo(general_info_filename)
+#                
+           
     # create the interaction system for tracks 
         self.tl = StreamlineLabeler('Bundle Picker',
-                           buffers, clusters,
+                           self.buffers, self.clusters,
                            vol_shape=data.shape[:3], 
                            affine=affine,
-                           clustering_parameter=len(clusters),
-                           clustering_parameter_max=len(clusters),
-                           full_dissimilarity_matrix=full_dissimilarity_matrix)
-                           
+                           clustering_parameter=len(self.clusters),
+                           clustering_parameter_max=len(self.clusters),
+                           full_dissimilarity_matrix=self.full_dissimilarity_matrix)
+                              
         data = np.interp(data, [data.min(), data.max()], [0, 255])    
-        self.guil = Guillotine('Volume Slicer', data, affine)                
-                           
-#        w = Window(width = 1200, 
-#                height = 800, 
-#                bgcolor = (.5, .5, 0.9) )
+        self.guil = Guillotine('Volume Slicer', data, affine)    
+            
+        try:
+            state
+            self.tl.set_state(state)
+        except NameError:
+            pass
+            
+            
+    def SaveInfo(self,filepath):
+        """
+        Saves all the information from the tractography required for the whole segmentation procedure
+        """
+        info = {'initclusters':self.clusters, 'buff':self.buffers, 'dismatrix':self.full_dissimilarity_matrix,'nprot':self.num_prototypes}
+        print "Saving information of the tractography for the segmentation"
+        print filepath
+        pickle.dump(info, open(filepath,'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        
     
-#        scene = Scene(scenename = 'Main Scene', activate_aabb = False)
-#
-#        
-#
-#        scene.add_actor(guil)
-#        scene.add_actor(tl)
-#
-#        w.add_scene(scene)
-#        w.refocus_camera()
+    def LoadInfo(self,filepath):
+        """
+        Loads all the information from the tractography required for the whole segmentation procedure
+        """
+        print "Loading general information file"
+        general_info = pickle.load(open(filepath))
+        self.buffers = general_info['buff']
+        self.clusters = general_info['initclusters']
+        self.full_dissimilarity_matrix = general_info['dismatrix']
+        self.num_prototypes = general_info['nprot']
+        
+    def SaveSegmentation(self, filename):
+        """
+        Saves the information of the segmentation result from the current session
+        """
+        
+        print "Save segmentation result from current session"
+        filename=filename[0]+'.seg'
+        state = self.tl.get_state()
+        seg_info={'structfilename':self.t1_filename, 'tractfilename':self.tracpath, 'segmsession':state}
+        pickle.dump(seg_info, open(filename,'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        
+    
+        
+        
+        
+#        filepath= self.tracpath[:myString.find(".")]
+        
+                               
+
 
 
