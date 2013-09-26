@@ -120,7 +120,9 @@ class RightPanel(QtGui.QWidget):
 class Window(QtGui.QMainWindow):
 
 
-    def __init__(self, parent = None, 
+    def __init__(self, parent = None,
+                    width=600,
+                    height=400,
                     bgcolor = (0,0,0), 
                     fullscreen = False, 
                     dynamic = False, 
@@ -143,10 +145,10 @@ class Window(QtGui.QMainWindow):
         """
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
         QtGui.QMainWindow.__init__(self, parent)
-        screenSize= QtGui.qApp.desktop().availableGeometry().size()
+#        screenSize= QtGui.qApp.desktop().availableGeometry().size()
         self.glWidget = GLWidget(parent = self, 
-                                    width = screenSize.width(), 
-                                    height = screenSize.height(),
+                                    width = width, 
+                                    height = height,
                                     bgcolor = (.5, .5, 0.9), 
                                     enable_light = enable_light)
                                     
@@ -191,19 +193,22 @@ class Window(QtGui.QMainWindow):
         """
         Saves the current session"
         """
+#        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', self.spaghetti.tracpath, str("(*.seg)"))
+#        seg_basename = filename[:filename.find(".")]
+#        self.spaghetti.SaveSegmentation(seg_basename)
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', os.getcwd(), str("(*.seg)"))
-        self.spa.SaveSegmentation(filename)
-#        f = open(filename, 'w')
-#        filedata = self.text.toPlainText()
-#        f.write(filedata)
-#        f.close()
+        self.spaghetti.SaveSegmentation(filename)
         
+
     def openStructFile(self):
         """
-        Opens a dialog to allow the user to choose the directory of the structure's file
+        Opens a dialog to allow the user to choose the structural file
         """
-        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
-        self.directorystruct = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
+#        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
+#        self.directorystruct = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
+        filedialog=QtGui.QFileDialog()
+        filedialog.setNameFilter(str("(*.dpy *.trk)"))
+        self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz)"))
            
    
     def openTractFile(self):
@@ -211,16 +216,23 @@ class Window(QtGui.QMainWindow):
         Opens a dialog to allow the user to choose the tractography file 
         """
         filedialog=QtGui.QFileDialog()
-        filedialog.setNameFilter(str("(*.dpy *.trk *.spa)"))
-        fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk *.spa)"))
-
-        self.spa= Spaghetti(str(self.directorystruct), fileTract)
-        scene = Scene(scenename = 'Main Scene', activate_aabb = False)
-
-        scene.add_actor(self.spa.guil)
-        scene.add_actor(self.spa.tl)
-
-        self.add_scene(scene)
+        filedialog.setNameFilter(str("(*.dpy *.trk)"))
+        self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk)"))
+        self.spaghetti= Spaghetti(self.fileStruct[0], self.fileTract[0])
+              
+        try:
+             self.scene
+             self.scene.actors['Volume Slicer'] = self.spaghetti.guil
+             self.scene.actors['Bundle Picker'] = self.spaghetti.tl
+             self.scene.update()
+            
+        except AttributeError:
+            #If this is the first opening we create the spaghetti class and the scene with actors
+            self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+            self.scene.add_actor(self.spaghetti.guil)
+            self.scene.add_actor(self.spaghetti.tl)
+            self.add_scene(self.scene)
+            
         self.refocus_camera()
         
     def OpenSegmSession(self):
@@ -230,13 +242,20 @@ class Window(QtGui.QMainWindow):
         filedialog=QtGui.QFileDialog()
         filedialog.setNameFilter(str("(*.seg)"))
         fileSeg = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.seg)"))
-        self.spa= Spaghetti(segmpath=fileSeg)
-        scene = Scene(scenename = 'Main Scene', activate_aabb = False)
-
-        scene.add_actor(self.spa.guil)
-        scene.add_actor(self.spa.tl)
-
-        self.add_scene(scene)
+        self.spaghetti= Spaghetti(segmpath=fileSeg[0])
+        
+        try:
+           self.scene
+           self.scene.actors['Volume Slicer'] = self.spaghetti.guil
+           self.scene.actors['Bundle Picker'] = self.spaghetti.tl
+           self.scene.update()
+        
+        except AttributeError:
+            self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+            self.scene.add_actor(self.spaghetti.guil)
+            self.scene.add_actor(self.spaghetti.tl)
+            self.add_scene(self.scene)
+            
         self.refocus_camera()
         
     def createMenus(self):
@@ -258,16 +277,16 @@ class Window(QtGui.QMainWindow):
         self.editMenu.addSeparator()
     
     def createActions(self):
-        self.openStruct = QtGui.QAction("&Open Structure...", self,
-                shortcut=QtGui.QKeySequence.Open,
-                statusTip="Open an existing file", triggered=self.openStructFile)
+        self.openStruct = QtGui.QAction("&Open Structural...", self,
+                shortcut=QtGui.QKeySequence("Ctrl+G"),
+                statusTip="Open an existing structural file", triggered=self.openStructFile)
                 
         self.openTract = QtGui.QAction("&Open Tractography...", self,
-                shortcut=QtGui.QKeySequence.Open,
-                statusTip="Open an existing file", triggered=self.openTractFile)
+                shortcut=QtGui.QKeySequence("Ctrl+T"),
+                statusTip="Open an existing tractography file", triggered=self.openTractFile)
                 
         self.openSeg = QtGui.QAction("&Open Segmentation result...", self,
-                shortcut=QtGui.QKeySequence.Open,
+                shortcut=QtGui.QKeySequence("Ctrl+N"),
                 statusTip="Open an existing segmentation session file", triggered=self.OpenSegmSession)        
 
         self.saveAct = QtGui.QAction("&Save segmentation", self,
@@ -305,7 +324,7 @@ class Window(QtGui.QMainWindow):
         return timer
 
     def add_scene(self, scene):
-        self.glWidget.world.add_scene( scene )
+        self.glWidget.world.add_scene(scene)
 
     def set_camera(self, camera):
         self.glWidget.world.camera = camera
@@ -395,7 +414,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         self.parent = parent
 
     def minimumSizeHint(self):
-        return QtCore.QSize(self.width - 50, self.height - 50)
+        return QtCore.QSize(50, 50)
 
     def sizeHint(self):
         return QtCore.QSize(self.width, self.height)
@@ -559,8 +578,9 @@ class GLWidget(QtOpenGL.QGLWidget):
         
 if __name__ == '__main__':
 
-    app = QtGui.QApplication(sys.argv)
-    wind = Window()
+#    app = QtGui.QApplication(sys.argv)
+    screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
+    wind = Window(width=screenSize.width(),height=screenSize.height())
     wind.show()
-    sys.exit(app.exec_()) 
+#    sys.exit(app.exec_()) 
         
