@@ -578,9 +578,9 @@ class GLWidget(QtOpenGL.QGLWidget):
         
 if __name__ == '__main__':
 
-#    app = QtGui.QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
     screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
     wind = Window(width=screenSize.width(),height=screenSize.height())
     wind.show()
-#    sys.exit(app.exec_()) 
+    sys.exit(app.exec_()) 
         

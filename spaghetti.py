@@ -22,6 +22,7 @@ import pickle
 from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
+#import pdb
 
 
 class Spaghetti():
@@ -38,6 +39,7 @@ class Spaghetti():
             print "Loading saved session file"
             segm_info = pickle.load(open(segmpath)) 
             state = segm_info['segmsession']  
+            
             self.structpath=segm_info['structfilename']
             self.tracpath=segm_info['tractfilename']   
             
@@ -50,7 +52,7 @@ class Spaghetti():
 
     #load the tracks registered in MNI space
         tracks_basename = self.tracpath[:self.tracpath.find(".")]
-#        tracks_format = self.tracpath[self.tracpath.find("."):]   
+        tracks_format = self.tracpath[self.tracpath.find("."):]   
         
         general_info_filename = tracks_basename + '.spa'
             #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
@@ -61,18 +63,25 @@ class Spaghetti():
             
         except IOError:
             print "General information not found, loading tractography to recompute buffers and dissimilarity matrix."
-            dpr = Dpy(self.tracpath, 'r')
-            print "Loading", self.tracpath
-            T = dpr.read_tracks()
-            dpr.close()
-            T = np.array(T, dtype=np.object)
-            
+            if tracks_format == '.dpy': 
+                dpr = Dpy(self.tracpath, 'r')
+                print "Loading", self.tracpath
+                self.T = dpr.read_tracks()
+                dpr.close()
+                self.T = np.array(self.T, dtype=np.object)
+                
+            elif tracks_format == '.trk': 
+                streams, hdr = nib.trackvis.read(self.tracpath)
+                print "Loading", self.tracpath
+                self.T = np.array([s[0] for s in streams], dtype=np.object)
+             
+           # pdb.set_trace()
             print "Computing buffers."
-            self.buffers = compute_buffers(T, alpha=1.0, save=False)
+            self.buffers = compute_buffers(self.T, alpha=1.0, save=False)
                 
             print "Computing dissimilarity representation."
             self.num_prototypes = 40
-            self.full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
+            self.full_dissimilarity_matrix = compute_disimilarity(self.T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
                 
             # compute initial MBKM with given n_clusters
             print "Computing MBKM"
