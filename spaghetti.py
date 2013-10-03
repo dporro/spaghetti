@@ -15,14 +15,14 @@ pyglet.options['debug_trace'] = debug
 import numpy as np
 import nibabel as nib
 from streamshow import StreamlineLabeler
-#from streamwindow import Window
+
 from guillotine import Guillotine
 from dipy.io.dpy import Dpy
 import pickle
 from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
-#import pdb
+
 
 
 class Spaghetti():
@@ -75,7 +75,6 @@ class Spaghetti():
                 print "Loading", self.tracpath
                 self.T = np.array([s[0] for s in streams], dtype=np.object)
              
-           # pdb.set_trace()
             print "Computing buffers."
             self.buffers = compute_buffers(self.T, alpha=1.0, save=False)
                 
@@ -117,7 +116,6 @@ class Spaghetti():
         """
         Saves all the information from the tractography required for the whole segmentation procedure
         """
-#        self.full_dissimilarity_matrix.astype(np.float32, copy=False)
         info = {'initclusters':self.clusters, 'buff':self.buffers, 'dismatrix':self.full_dissimilarity_matrix,'nprot':self.num_prototypes}
         print "Saving information of the tractography for the segmentation"
         print filepath
@@ -149,9 +147,7 @@ class Spaghetti():
     
         
         
-        
-#        filepath= self.tracpath[:myString.find(".")]
-        
+      
                                
 
 

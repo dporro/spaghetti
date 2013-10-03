@@ -145,7 +145,6 @@ class Window(QtGui.QMainWindow):
         """
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
         QtGui.QMainWindow.__init__(self, parent)
-#        screenSize= QtGui.qApp.desktop().availableGeometry().size()
         self.glWidget = GLWidget(parent = self, 
                                     width = width, 
                                     height = height,
@@ -164,7 +163,6 @@ class Window(QtGui.QMainWindow):
         mainWidget.setLayout(mainLayout)
         self.setCentralWidget(mainWidget)
 
-#        self.setLayout(mainLayout)
         title = 'Streamline Interaction and Segmentation'
         self.setWindowTitle(self.tr(title))      
         self.createActions()
@@ -193,9 +191,6 @@ class Window(QtGui.QMainWindow):
         """
         Saves the current session"
         """
-#        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', self.spaghetti.tracpath, str("(*.seg)"))
-#        seg_basename = filename[:filename.find(".")]
-#        self.spaghetti.SaveSegmentation(seg_basename)
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', os.getcwd(), str("(*.seg)"))
         self.spaghetti.SaveSegmentation(filename)
         
@@ -204,8 +199,6 @@ class Window(QtGui.QMainWindow):
         """
         Opens a dialog to allow the user to choose the structural file
         """
-#        flags = QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
-#        self.directorystruct = QtGui.QFileDialog.getExistingDirectory(self,"Open Directory", os.getcwd(),flags)
         filedialog=QtGui.QFileDialog()
         filedialog.setNameFilter(str("(*.dpy *.trk)"))
         self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz)"))
@@ -221,10 +214,12 @@ class Window(QtGui.QMainWindow):
         self.spaghetti= Spaghetti(self.fileStruct[0], self.fileTract[0])
               
         try:
-             self.scene
-             self.scene.actors['Volume Slicer'] = self.spaghetti.guil
-             self.scene.actors['Bundle Picker'] = self.spaghetti.tl
-             self.scene.update()
+            self.scene
+            self.scene.actors.clear()
+            self.scene.update()
+            self.scene.add_actor(self.spaghetti.guil)
+            self.scene.add_actor(self.spaghetti.tl)
+            self.scene.update()
             
         except AttributeError:
             #If this is the first opening we create the spaghetti class and the scene with actors
@@ -245,10 +240,12 @@ class Window(QtGui.QMainWindow):
         self.spaghetti= Spaghetti(segmpath=fileSeg[0])
         
         try:
-           self.scene
-           self.scene.actors['Volume Slicer'] = self.spaghetti.guil
-           self.scene.actors['Bundle Picker'] = self.spaghetti.tl
-           self.scene.update()
+            self.scene
+            self.scene.actors.clear()
+            self.scene.update()
+            self.scene.add_actor(self.spaghetti.guil)
+            self.scene.add_actor(self.spaghetti.tl)
+            self.scene.update()
         
         except AttributeError:
             self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
@@ -268,12 +265,6 @@ class Window(QtGui.QMainWindow):
         self.fileMenu.addAction(self.exitAct)
         
         self.editMenu = self.menuBar().addMenu("&Edit")
-#        self.editMenu.addAction(self.undoAct)
-#        self.editMenu.addAction(self.redoAct)
-#        self.editMenu.addSeparator()
-#        self.editMenu.addAction(self.cutAct)
-#        self.editMenu.addAction(self.copyAct)
-#        self.editMenu.addAction(self.pasteAct)
         self.editMenu.addSeparator()
     
     def createActions(self):
@@ -292,10 +283,6 @@ class Window(QtGui.QMainWindow):
         self.saveAct = QtGui.QAction("&Save segmentation", self,
                 shortcut=QtGui.QKeySequence.Save,
                 statusTip="Save the current segmentation session to disk", triggered=self.saveFile)
-
-#        self.printAct = QtGui.QAction("&Print...", self,
-#                shortcut=QtGui.QKeySequence.Print,
-#                statusTip="Print the document", triggered=self.print_)
 
         self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
                 statusTip="Exit the application", triggered=self.close)
@@ -578,9 +565,8 @@ class GLWidget(QtOpenGL.QGLWidget):
         
 if __name__ == '__main__':
 
-    app = QtGui.QApplication(sys.argv)
     screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
     wind = Window(width=screenSize.width(),height=screenSize.height())
     wind.show()
-    sys.exit(app.exec_()) 
+ 
         
