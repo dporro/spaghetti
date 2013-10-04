@@ -200,8 +200,8 @@ class Window(QtGui.QMainWindow):
         Opens a dialog to allow the user to choose the structural file
         """
         filedialog=QtGui.QFileDialog()
-        filedialog.setNameFilter(str("(*.dpy *.trk)"))
-        self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz)"))
+        filedialog.setNameFilter(str("((*.gz *.nii *.img)"))
+        self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz *.nii *.img)"))
            
    
     def openTractFile(self):

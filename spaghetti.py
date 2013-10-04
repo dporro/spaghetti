@@ -66,21 +66,21 @@ class Spaghetti():
             if tracks_format == '.dpy': 
                 dpr = Dpy(self.tracpath, 'r')
                 print "Loading", self.tracpath
-                self.T = dpr.read_tracks()
+                T = dpr.read_tracks()
                 dpr.close()
-                self.T = np.array(self.T, dtype=np.object)
+                T = np.array(T, dtype=np.object)
                 
             elif tracks_format == '.trk': 
                 streams, hdr = nib.trackvis.read(self.tracpath)
                 print "Loading", self.tracpath
-                self.T = np.array([s[0] for s in streams], dtype=np.object)
+                T = np.array([s[0] for s in streams], dtype=np.object)
              
             print "Computing buffers."
-            self.buffers = compute_buffers(self.T, alpha=1.0, save=False)
+            self.buffers = compute_buffers(T, alpha=1.0, save=False)
                 
             print "Computing dissimilarity representation."
             self.num_prototypes = 40
-            self.full_dissimilarity_matrix = compute_disimilarity(self.T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
+            self.full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
                 
             # compute initial MBKM with given n_clusters
             print "Computing MBKM"
