@@ -51,8 +51,9 @@ class Spaghetti():
         affine = img.get_affine()
 
     #load the tracks registered in MNI space
-        tracks_basename = self.tracpath[:self.tracpath.find(".")]
-        tracks_format = self.tracpath[self.tracpath.find("."):]   
+#        tracks_basename = self.tracpath[:self.tracpath.find(".")]
+        tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy'),match_case=False)
+#        tracks_format = self.tracpath[self.tracpath.find("."):]   
         
         general_info_filename = tracks_basename + '.spa'
             #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it

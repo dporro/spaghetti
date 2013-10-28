@@ -202,6 +202,15 @@ class Window(QtGui.QMainWindow):
         filedialog=QtGui.QFileDialog()
         filedialog.setNameFilter(str("((*.gz *.nii *.img)"))
         self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz *.nii *.img)"))
+        self.openTract.setEnabled(True)
+        try:
+            self.scene
+            self.scene.actors.clear()
+            self.scene.update()
+        except AttributeError:
+             #If this is the first opening we create the spaghetti class and the scene with actors
+            self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+            self.add_scene(self.scene)
            
    
     def openTractFile(self):
@@ -212,23 +221,22 @@ class Window(QtGui.QMainWindow):
         filedialog.setNameFilter(str("(*.dpy *.trk)"))
         self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk)"))
         self.spaghetti= Spaghetti(self.fileStruct[0], self.fileTract[0])
-              
+        
+        #if there is already a tractography open is because user wants to open a different tractography with the same structural, the we just remove the old actor tractography and add the new one       
         try:
-            self.scene
-            self.scene.actors.clear()
-            self.scene.update()
+            self.scene.actors
+            self.scene.remove_actor('Bundle Picker')
+            self.scene.add_actor(self.spaghetti.tl)
+        
+        #if there is no tractpgraphy open, then there is no structural open either, so we just add them both to the scene
+        except AttributeError:    
             self.scene.add_actor(self.spaghetti.guil)
             self.scene.add_actor(self.spaghetti.tl)
-            self.scene.update()
             
-        except AttributeError:
-            #If this is the first opening we create the spaghetti class and the scene with actors
-            self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
-            self.scene.add_actor(self.spaghetti.guil)
-            self.scene.add_actor(self.spaghetti.tl)
-            self.add_scene(self.scene)
             
         self.refocus_camera()
+        
+        self.saveAct.setEnabled(True)
         
     def OpenSegmSession(self):
         """
@@ -255,23 +263,28 @@ class Window(QtGui.QMainWindow):
             
         self.refocus_camera()
         
+        #to avoid, better to force the user to open a new structural if he wants to open a new tractography?
+        self.openTract.setEnabled(False)
+        
     def createMenus(self):
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.openStruct)
         self.fileMenu.addAction(self.openTract)
+        self.openTract.setEnabled(False)
         self.fileMenu.addAction(self.openSeg)
         self.fileMenu.addAction(self.saveAct)
+        self.saveAct.setEnabled(False)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
-        
         self.editMenu = self.menuBar().addMenu("&Edit")
         self.editMenu.addSeparator()
+
     
     def createActions(self):
         self.openStruct = QtGui.QAction("&Open Structural...", self,
                 shortcut=QtGui.QKeySequence("Ctrl+G"),
                 statusTip="Open an existing structural file", triggered=self.openStructFile)
-                
+                 
         self.openTract = QtGui.QAction("&Open Tractography...", self,
                 shortcut=QtGui.QKeySequence("Ctrl+T"),
                 statusTip="Open an existing tractography file", triggered=self.openTractFile)
