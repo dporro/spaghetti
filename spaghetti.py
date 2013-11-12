@@ -49,7 +49,7 @@ class Spaghetti():
         img = nib.load(self.structpath)
         data = img.get_data()
         affine = img.get_affine()
-
+        
     #load the tracks registered in MNI space
 #        tracks_basename = self.tracpath[:self.tracpath.find(".")]
         tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy'),match_case=False)
@@ -72,7 +72,7 @@ class Spaghetti():
                 T = np.array(T, dtype=np.object)
                 
             elif tracks_format == '.trk': 
-                streams, hdr = nib.trackvis.read(self.tracpath)
+                streams, hdr = nib.trackvis.read(self.tracpath,points_space='voxel')
                 print "Loading", self.tracpath
                 T = np.array([s[0] for s in streams], dtype=np.object)
              
@@ -102,8 +102,9 @@ class Spaghetti():
                            clustering_parameter=len(self.clusters),
                            clustering_parameter_max=len(self.clusters),
                            full_dissimilarity_matrix=self.full_dissimilarity_matrix)
-                              
-        data = np.interp(data, [data.min(), data.max()], [0, 255])    
+        
+        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions                    
+        data = np.squeeze(np.interp(data, [data.min(), data.max()], [0, 255]))
         self.guil = Guillotine('Volume Slicer', data, affine)    
             
         try:

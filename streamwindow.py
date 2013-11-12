@@ -6,6 +6,8 @@ from fos.vsml import vsml
 from fos.world import *
 from fos.actor import *
 from spaghetti import Spaghetti
+import os
+
 
 try:
     from pyglet.gl import *
@@ -113,15 +115,32 @@ class RightPanel(QtGui.QWidget):
         self.vol.show_k = not self.vol.show_k
         self.parent.glWidget.updateGL()
         self.parent.glWidget.setFocus()
-        
 
+class LeftMenu(QtGui.QWidget):    
+    def __init__(self, parent,width):
+        QtGui.QWidget.__init__(self, parent)
+       
+        self.parent = parent
+        
+        treeWidget = QtGui.QTreeWidget()
+        treeWidget.setHeaderLabel("Loaded data")
+        treeWidget.setFixedWidth(width/8)
+        
+#        treeWidget.header().setStretchLastSection(False)
+#        treeWidget.header().setResizeMode(0, QtGui.QHeaderView.Stretch) 
+##        treeWidget.header().resizeSection(0,500)
+               
+#        vbox = QtGui.QVBoxLayout()
+#        vbox.addWidget(treeWidget)
+#        
+#        self.setLayout(vbox)       
 
 
 class Window(QtGui.QMainWindow):
 
 
     def __init__(self, parent = None,
-                    width=600,
+                    width=800,
                     height=400,
                     bgcolor = (0,0,0), 
                     fullscreen = False, 
@@ -146,22 +165,33 @@ class Window(QtGui.QMainWindow):
         # TODO: add PySide.QtOpenGL.QGLFormat to configure the OpenGL context
         QtGui.QMainWindow.__init__(self, parent)
         self.glWidget = GLWidget(parent = self, 
-                                    width = width, 
+                                    width = width-(width/8), 
                                     height = height,
                                     bgcolor = (.5, .5, 0.9), 
                                     enable_light = enable_light)
                                     
-             
+        #create the tree to show the data
+        self.treeWidget = QtGui.QTreeWidget()
+        self.treeWidget.setHeaderLabel("Loaded data")
+        self.treeWidget.header().resizeSection(0,1000)
+        self.treeWidget.setFixedWidth(width/8)
+        
+            
         mainLayout = QtGui.QHBoxLayout()
+        
         mainLayout.addWidget(self.glWidget)
-
+        mainLayout.addWidget(self.treeWidget)
+        
+    
         if right_panel:
             rightPanel = RightPanel(self)
             mainLayout.addWidget(rightPanel)
-            
+        
         mainWidget = QtGui.QWidget()
         mainWidget.setLayout(mainLayout)
+        
         self.setCentralWidget(mainWidget)
+ 
 
         title = 'Streamline Interaction and Segmentation'
         self.setWindowTitle(self.tr(title))      
@@ -203,6 +233,12 @@ class Window(QtGui.QMainWindow):
         filedialog.setNameFilter(str("((*.gz *.nii *.img)"))
         self.fileStruct= filedialog.getOpenFileName(self,"Open Structural file", os.getcwd(), str("(*.gz *.nii *.img)"))
         self.openTract.setEnabled(True)
+        
+        struct_basename = os.path.basename(self.fileStruct[0])
+        self.treeWidget.clear()
+        self.structnameitem =  QtGui.QTreeWidgetItem(self.treeWidget)
+        self.structnameitem.setText(0, struct_basename) #should we add the whole file path?
+
         try:
             self.scene
             self.scene.actors.clear()
@@ -220,9 +256,25 @@ class Window(QtGui.QMainWindow):
         filedialog=QtGui.QFileDialog()
         filedialog.setNameFilter(str("(*.dpy *.trk)"))
         self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk)"))
+        
+        tracks_basename = os.path.basename(self.fileTract[0])
+        tractnameitem =  QtGui.QTreeWidgetItem(self.structnameitem) 
+        tractnameitem.setText(0, tracks_basename) #should we add the whole file path?
+        self.treeWidget.expandAll()
+        
+        #we can now enable the segmentation option
+        self.runSegmentation.setEnabled(True)
+    
+        
+    def segmentTract(self):
+        """
+        Calls the spaghetti function and starts the segmentation process.
+        """
+      
         self.spaghetti= Spaghetti(self.fileStruct[0], self.fileTract[0])
         
-        #if there is already a tractography open is because user wants to open a different tractography with the same structural, the we just remove the old actor tractography and add the new one       
+       
+        #if there is already a tractography open is because user wants to open a different tractography with the same structural, then we just remove the old actor tractography and add the new one       
         try:
             self.scene.actors
             self.scene.remove_actor('Bundle Picker')
@@ -233,10 +285,12 @@ class Window(QtGui.QMainWindow):
             self.scene.add_actor(self.spaghetti.guil)
             self.scene.add_actor(self.spaghetti.tl)
             
-            
         self.refocus_camera()
         
+        #we can now enable the save session option
         self.saveAct.setEnabled(True)
+    
+               
         
     def OpenSegmSession(self):
         """
@@ -276,13 +330,16 @@ class Window(QtGui.QMainWindow):
         self.saveAct.setEnabled(False)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
+        self.fileMenu = self.menuBar().addMenu("&Functions")
+        self.fileMenu.addAction(self.runSegmentation)
+        self.runSegmentation.setEnabled(False)
         self.editMenu = self.menuBar().addMenu("&Edit")
         self.editMenu.addSeparator()
 
     
     def createActions(self):
         self.openStruct = QtGui.QAction("&Open Structural...", self,
-                shortcut=QtGui.QKeySequence("Ctrl+G"),
+                shortcut=QtGui.QKeySequence("Ctrl+L"),
                 statusTip="Open an existing structural file", triggered=self.openStructFile)
                  
         self.openTract = QtGui.QAction("&Open Tractography...", self,
@@ -296,6 +353,11 @@ class Window(QtGui.QMainWindow):
         self.saveAct = QtGui.QAction("&Save segmentation", self,
                 shortcut=QtGui.QKeySequence.Save,
                 statusTip="Save the current segmentation session to disk", triggered=self.saveFile)
+                
+        self.runSegmentation = QtGui.QAction("&Segmentation", self,
+                shortcut=QtGui.QKeySequence("Ctrl+G"),
+                statusTip="Start the segmentation process", triggered=self.segmentTract)
+       
 
         self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
                 statusTip="Exit the application", triggered=self.close)
@@ -389,7 +451,7 @@ class Window(QtGui.QMainWindow):
 
 # if event.key() == Qt.Key_O and ( event.modifiers() & Qt.ControlModifier ): 
 # & == bit wise "and"!
-
+           
 class GLWidget(QtOpenGL.QGLWidget):
     def __init__(self, parent=None, 
                         width = None, 
@@ -578,8 +640,14 @@ class GLWidget(QtOpenGL.QGLWidget):
         
 if __name__ == '__main__':
 
+#    screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
+#    wind = Window(width=screenSize.width(),height=screenSize.height())
+#    wind.show()
+
+    app = QtGui.QApplication(sys.argv)
     screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
     wind = Window(width=screenSize.width(),height=screenSize.height())
     wind.show()
+    sys.exit(app.exec_())
  
         
