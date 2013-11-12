@@ -182,7 +182,10 @@ class Window(QtGui.QMainWindow):
         mainLayout.addWidget(self.glWidget)
         mainLayout.addWidget(self.treeWidget)
         
-    
+#        #create ProgressBar to show when running segmentation so the user knows the app is running
+        self.statusbar = QtGui.QStatusBar(self)
+        self.statusbar.setObjectName("statusbar")
+                
         if right_panel:
             rightPanel = RightPanel(self)
             mainLayout.addWidget(rightPanel)
@@ -191,7 +194,7 @@ class Window(QtGui.QMainWindow):
         mainWidget.setLayout(mainLayout)
         
         self.setCentralWidget(mainWidget)
- 
+        self.setStatusBar(self.statusbar)      
 
         title = 'Streamline Interaction and Segmentation'
         self.setWindowTitle(self.tr(title))      
@@ -258,7 +261,7 @@ class Window(QtGui.QMainWindow):
         self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk)"))
         
         tracks_basename = os.path.basename(self.fileTract[0])
-        tractnameitem =  QtGui.QTreeWidgetItem(self.structnameitem) 
+        tractnameitem =  QtGui.QTreeWidgetItem(self.structnameitem)
         tractnameitem.setText(0, tracks_basename) #should we add the whole file path?
         self.treeWidget.expandAll()
         
@@ -289,7 +292,8 @@ class Window(QtGui.QMainWindow):
         
         #we can now enable the save session option
         self.saveAct.setEnabled(True)
-    
+#        self.progressDialog.cancel()
+        
                
         
     def OpenSegmSession(self):
@@ -353,11 +357,10 @@ class Window(QtGui.QMainWindow):
         self.saveAct = QtGui.QAction("&Save segmentation", self,
                 shortcut=QtGui.QKeySequence.Save,
                 statusTip="Save the current segmentation session to disk", triggered=self.saveFile)
-                
+         
         self.runSegmentation = QtGui.QAction("&Segmentation", self,
                 shortcut=QtGui.QKeySequence("Ctrl+G"),
                 statusTip="Start the segmentation process", triggered=self.segmentTract)
-       
 
         self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
                 statusTip="Exit the application", triggered=self.close)
@@ -451,7 +454,7 @@ class Window(QtGui.QMainWindow):
 
 # if event.key() == Qt.Key_O and ( event.modifiers() & Qt.ControlModifier ): 
 # & == bit wise "and"!
-           
+
 class GLWidget(QtOpenGL.QGLWidget):
     def __init__(self, parent=None, 
                         width = None, 

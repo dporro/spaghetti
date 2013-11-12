@@ -203,8 +203,8 @@ class StreamlineLabeler(Actor, Manipulator):
         # super(StreamlineLabeler, self).__init__(name)
         Actor.__init__(self, name) # direct call of the __init__ seems better in case of multiple inheritance
 
-        if affine is None: self.affine = np.eye(4, dtype = np.float32)
-        else: self.affine = affine
+        if affine is None: affine = np.eye(4, dtype = np.float32)
+        self.affine = affine
         if vol_shape is not None:
             I, J, K = vol_shape
             centershift = img_to_ras_coords(np.array([[I/2., J/2., K/2.]]), affine)

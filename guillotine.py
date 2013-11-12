@@ -34,7 +34,6 @@ class Guillotine(Slicer):
                 'anteriorz+' look in the subject from the front 
 
         """
-
         data[np.isnan(data)] = 0
         data = np.interp(data, [data.min(), data.max()], [0, 255])
         data = data.astype(np.ubyte)
