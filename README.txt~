@@ -1,9 +1,0 @@
-* Dependencies
-
-fos : https://github.com/fos/fos.git
-dipy: packaged dipy from neurodebian
-
-
-* Spaghetti files
-
-guillotine.py : from spaghetti branch of Eleftherios'dipy
