@@ -13,15 +13,16 @@ pyglet.options['debug_x11'] = debug
 pyglet.options['debug_trace'] = debug
 
 import numpy as np
+import vtk
 import nibabel as nib
 from streamshow import StreamlineLabeler
-
 from guillotine import Guillotine
 from dipy.io.dpy import Dpy
 import pickle
 from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
+
 
 
 
@@ -46,22 +47,24 @@ class Spaghetti():
             
       #load T1 volume registered in MNI space
         print "Loading structural information file"
-        img = nib.load(self.structpath)
-        data = img.get_data()
-        affine = img.get_affine()
+        self.img = nib.load(self.structpath)
+        data = self.img.get_data()
+        affine = self.img.get_affine()
+        
         
     #load the tracks registered in MNI space
 #        tracks_basename = self.tracpath[:self.tracpath.find(".")]
-        tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy'),match_case=False)
+        tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy', '.vtk'),match_case=False)
 #        tracks_format = self.tracpath[self.tracpath.find("."):]   
         
         general_info_filename = tracks_basename + '.spa'
             #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
+        
         try:
             print "Looking for general information file"
             self.LoadInfo(general_info_filename)
             #show a message box
-            
+          
         except IOError:
             print "General information not found, loading tractography to recompute buffers and dissimilarity matrix."
             if tracks_format == '.dpy': 
@@ -72,9 +75,12 @@ class Spaghetti():
                 T = np.array(T, dtype=np.object)
                 
             elif tracks_format == '.trk': 
-                streams, hdr = nib.trackvis.read(self.tracpath,points_space='voxel')
+                streams, hdr = nib.trackvis.read(self.tracpath, points_space='voxel')
                 print "Loading", self.tracpath
                 T = np.array([s[0] for s in streams], dtype=np.object)
+                
+            elif tracks_format == '.vtk': 
+                T = self.ReadingVTKTract()
              
             print "Computing buffers."
             self.buffers = compute_buffers(T, alpha=1.0, save=False)
@@ -103,8 +109,8 @@ class Spaghetti():
                            clustering_parameter_max=len(self.clusters),
                            full_dissimilarity_matrix=self.full_dissimilarity_matrix)
         
-        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions                    
-        data = np.squeeze(np.interp(data, [data.min(), data.max()], [0, 255]))
+        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions 
+        data = (np.interp(np.squeeze(data), [data.min(), data.max()], [0, 255]))
         self.guil = Guillotine('Volume Slicer', data, affine)    
             
         try:
@@ -147,6 +153,40 @@ class Spaghetti():
         pickle.dump(seg_info, open(filename,'w'), protocol=pickle.HIGHEST_PROTOCOL)
         
     
+    def ReadingVTKTract(self):
+        """
+        Read Entire Tractography from .vtk file
+        """
+        #Reading tractography which is stored as Polydata in .vtk file
+        reader = vtk.vtkPolyDataReader()
+        reader.SetFileName(self.tracpath)
+        
+        #Releasing memory
+        reader.ReleaseDataFlagOn()
+        reader.GetOutput().ReleaseDataFlagOn()
+        reader.Update()
+        
+       
+        data=reader.GetOutput()
+        #read header if there is...we'll see how to use it later
+#        hdr=reader.GetHeader()
+        
+        del reader
+        nstreamlines=data.GetNumberOfLines()
+      
+        T=[]
+        #Obtaining the points corresponding to the ith streamline, which are associated to the Ids in the ith cell. 
+        for i in range(nstreamlines-1):
+             pts = data.GetCell(i).GetPoints()    
+             T.append(np.array([pts.GetPoint(j) for j in range(pts.GetNumberOfPoints())],dtype=np.float32))
+             
+        T = np.array(T, dtype=np.object)
+        
+       
+        return T
+        
+        
+        
         
         
       

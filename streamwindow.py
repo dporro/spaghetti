@@ -254,8 +254,8 @@ class Window(QtGui.QMainWindow):
         Opens a dialog to allow the user to choose the tractography file 
         """
         filedialog=QtGui.QFileDialog()
-        filedialog.setNameFilter(str("(*.dpy *.trk)"))
-        self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk)"))
+        filedialog.setNameFilter(str("(*.dpy *.trk *.vtk)"))
+        self.fileTract = filedialog.getOpenFileName(self,"Open Tractography file", os.getcwd(), str("(*.dpy *.trk *.vtk)"))
         
         tracks_basename = os.path.basename(self.fileTract[0])
         tractnameitem =  QtGui.QTreeWidgetItem(self.structnameitem) 
