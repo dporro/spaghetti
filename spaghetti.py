@@ -47,9 +47,9 @@ class Spaghetti():
             
       #load T1 volume registered in MNI space
         print "Loading structural information file"
-        self.img = nib.load(self.structpath)
-        data = self.img.get_data()
-        affine = self.img.get_affine()
+        img = nib.load(self.structpath)
+        data = img.get_data()
+        affine = img.get_affine()
         
         
     #load the tracks registered in MNI space
