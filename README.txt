@@ -3,6 +3,7 @@
 pyglet : Ubuntu's version
 fos : https://github.com/fos/fos.git
 dipy: packaged from neurodebian
+vtk: packaged from neurodebian
 scikit-learn (just for MBKM): packaged from neurodebian
 
 Note: scikit-learn can be removed in future by using:
