@@ -219,7 +219,7 @@ class Window(QtGui.QMainWindow):
             
     def saveFile(self):
         """
-        Saves the current session"
+        Saves the current session.
         """
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', os.getcwd(), str("(*.seg)"))
         self.spaghetti.SaveSegmentation(filename)
