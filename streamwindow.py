@@ -13,7 +13,7 @@ try:
     from pyglet.gl import *
 except ImportError:
     print("Need pyglet for OpenGL rendering")
-
+    
 empty_messages={ 'key_pressed':None,
                     'mouse_pressed':None,
                     'mouse_position':None,
@@ -640,14 +640,14 @@ class GLWidget(QtOpenGL.QGLWidget):
         
 if __name__ == '__main__':
 
-#    screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
-#    wind = Window(width=screenSize.width(),height=screenSize.height())
-#    wind.show()
-
-    app = QtGui.QApplication(sys.argv)
     screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
     wind = Window(width=screenSize.width(),height=screenSize.height())
     wind.show()
-    sys.exit(app.exec_())
+
+    # app = QtGui.QApplication(sys.argv)
+    # screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
+    # wind = Window(width=screenSize.width(),height=screenSize.height())
+    # wind.show()
+    # sys.exit(app.exec_())
  
         
