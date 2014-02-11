@@ -22,48 +22,55 @@ import pickle
 from streamshow import compute_buffers, mbkm_wrapper
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
+import pdb
 
 
 
 
 class Spaghetti():
 
-    def __init__(self, structpath=None, tracpath=None, segmpath=None):
-        
+    def __init__(self, structpath=None, segmpath=None):
         
         if segmpath == None:
             
             self.structpath = structpath
-            self.tracpath=tracpath
-                        
+            
         else:
             print "Loading saved session file"
             segm_info = pickle.load(open(segmpath)) 
-            state = segm_info['segmsession']  
+            self.state = segm_info['segmsession']  
             
             self.structpath=segm_info['structfilename']
             self.tracpath=segm_info['tractfilename']   
             
             
-      #load T1 volume registered in MNI space
+        #load T1 volume registered in MNI space
         print "Loading structural information file"
         img = nib.load(self.structpath)
         data = img.get_data()
-        affine = img.get_affine()
+        self.affine = img.get_affine()
         
         
-    #load the tracks registered in MNI space
-#        tracks_basename = self.tracpath[:self.tracpath.find(".")]
+        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions 
+        self.data = (np.interp(np.squeeze(data), [data.min(), data.max()], [0, 255]))
+        
+        #Create the Guillotine object
+        self.guil = Guillotine('Volume Slicer', self.data, self.affine)
+        
+        
+    def segmentation(self, tracpath=None):
+        
+        #load the tracks registered in MNI space
+        self.tracpath=tracpath
         tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy', '.vtk'),match_case=False)
-#        tracks_format = self.tracpath[self.tracpath.find("."):]   
         
         general_info_filename = tracks_basename + '.spa'
-            #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
         
+        #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
         try:
             print "Looking for general information file"
-            self.LoadInfo(general_info_filename)
-            #show a message box
+            self.load_info(general_info_filename)
+            
           
         except IOError:
             print "General information not found, loading tractography to recompute buffers and dissimilarity matrix."
@@ -80,11 +87,13 @@ class Spaghetti():
                 T = np.array([s[0] for s in streams], dtype=np.object)
                 
             elif tracks_format == '.vtk': 
-                T = self.ReadingVTKTract()
+                T = self.reading_VTK_tract()
              
             print "Computing buffers."
+            pdb.set_trace()
             self.buffers = compute_buffers(T, alpha=1.0, save=False)
-                
+            
+            #compute dissimilarity matrix with given num_prototypes prototypes by SFF method
             print "Computing dissimilarity representation."
             self.num_prototypes = 40
             self.full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
@@ -97,30 +106,27 @@ class Spaghetti():
                 
                 
             print "Saving computed information from tractography"
-            self.SaveInfo(general_info_filename)
-#                
+            self.save_info(general_info_filename)
+         
            
-    # create the interaction system for tracks 
+        # create the interaction system for tracks 
         self.tl = StreamlineLabeler('Bundle Picker',
                            self.buffers, self.clusters,
-                           vol_shape=data.shape[:3], 
-                           affine=affine,
+                           vol_shape=self.data.shape[:3], 
+                           affine=self.affine,
                            clustering_parameter=len(self.clusters),
                            clustering_parameter_max=len(self.clusters),
                            full_dissimilarity_matrix=self.full_dissimilarity_matrix)
         
-        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions 
-        data = (np.interp(np.squeeze(data), [data.min(), data.max()], [0, 255]))
-        self.guil = Guillotine('Volume Slicer', data, affine)    
-            
+        
         try:
-            state
-            self.tl.set_state(state)
-        except NameError:
+            self.state
+            self.tl.set_state(self.state)
+        except AttributeError:
             pass
             
             
-    def SaveInfo(self,filepath):
+    def save_info(self,filepath):
         """
         Saves all the information from the tractography required for the whole segmentation procedure
         """
@@ -130,7 +136,7 @@ class Spaghetti():
         pickle.dump(info, open(filepath,'w'), protocol=pickle.HIGHEST_PROTOCOL)
         
     
-    def LoadInfo(self,filepath):
+    def load_info(self,filepath):
         """
         Loads all the information from the tractography required for the whole segmentation procedure
         """
@@ -141,19 +147,19 @@ class Spaghetti():
         self.full_dissimilarity_matrix = general_info['dismatrix']
         self.num_prototypes = general_info['nprot']
         
-    def SaveSegmentation(self, filename):
+    def save_segmentation(self, filename):
         """
         Saves the information of the segmentation result from the current session
         """
         
         print "Save segmentation result from current session"
         filename=filename[0]+'.seg'
-        state = self.tl.get_state()
-        seg_info={'structfilename':self.structpath, 'tractfilename':self.tracpath, 'segmsession':state}
+        self.state = self.tl.get_state()
+        seg_info={'structfilename':self.structpath, 'tractfilename':self.tracpath, 'segmsession':self.state}
         pickle.dump(seg_info, open(filename,'w'), protocol=pickle.HIGHEST_PROTOCOL)
         
     
-    def ReadingVTKTract(self):
+    def reading_VTK_tract(self):
         """
         Read Entire Tractography from .vtk file
         """
@@ -166,19 +172,16 @@ class Spaghetti():
         reader.GetOutput().ReleaseDataFlagOn()
         reader.Update()
         
-       
         data=reader.GetOutput()
-        #read header if there is...we'll see how to use it later
-#        hdr=reader.GetHeader()
         
         del reader
         nstreamlines=data.GetNumberOfLines()
       
+        #Obtaining the points corresponding to the ith streamline, which are associated to the Ids in the ith cell.
         T=[]
-        #Obtaining the points corresponding to the ith streamline, which are associated to the Ids in the ith cell. 
         for i in range(nstreamlines-1):
-             pts = data.GetCell(i).GetPoints()    
-             T.append(np.array([pts.GetPoint(j) for j in range(pts.GetNumberOfPoints())],dtype=np.float32))
+            pts = data.GetCell(i).GetPoints()    
+            T.append(np.array([pts.GetPoint(j) for j in range(pts.GetNumberOfPoints())],dtype=np.float32))
              
         T = np.array(T, dtype=np.object)
         

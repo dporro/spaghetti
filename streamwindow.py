@@ -195,8 +195,8 @@ class Window(QtGui.QMainWindow):
 
         title = 'Streamline Interaction and Segmentation'
         self.setWindowTitle(self.tr(title))      
-        self.createActions()
-        self.createMenus()
+        self.create_actions()
+        self.create_menus()
       
         self.spinCameraTimer = self.timerInit(interval = 30)
         self._spinCameraTimerInit = False
@@ -217,15 +217,15 @@ class Window(QtGui.QMainWindow):
             self.fullscreen = False
             
             
-    def saveFile(self):
+    def save_file(self):
         """
         Saves the current session.
         """
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Segmentation', os.getcwd(), str("(*.seg)"))
-        self.spaghetti.SaveSegmentation(filename)
+        self.spaghetti.save_segmentation(filename)
         
 
-    def openStructFile(self):
+    def open_struct_file(self):
         """
         Opens a dialog to allow the user to choose the structural file
         """
@@ -244,12 +244,15 @@ class Window(QtGui.QMainWindow):
             self.scene.actors.clear()
             self.scene.update()
         except AttributeError:
-             #If this is the first opening we create the spaghetti class and the scene with actors
+             #If this is the first opening we create the spaghetti class and the scene 
             self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
             self.add_scene(self.scene)
-           
+            self.spaghetti= Spaghetti(self.fileStruct[0])
+            self.scene.add_actor(self.spaghetti.guil)
+            
+        self.refocus_camera()   
    
-    def openTractFile(self):
+    def open_tract_file(self):
         """
         Opens a dialog to allow the user to choose the tractography file 
         """
@@ -266,14 +269,13 @@ class Window(QtGui.QMainWindow):
         self.runSegmentation.setEnabled(True)
     
         
-    def segmentTract(self):
+    def segment_tract(self):
         """
         Calls the spaghetti function and starts the segmentation process.
         """
       
-        self.spaghetti= Spaghetti(self.fileStruct[0], self.fileTract[0])
+        self.spaghetti.segmentation(self.fileTract[0])
         
-       
         #if there is already a tractography open is because user wants to open a different tractography with the same structural, then we just remove the old actor tractography and add the new one       
         try:
             self.scene.actors
@@ -282,9 +284,8 @@ class Window(QtGui.QMainWindow):
         
         #if there is no tractpgraphy open, then there is no structural open either, so we just add them both to the scene
         except AttributeError:    
-            self.scene.add_actor(self.spaghetti.guil)
             self.scene.add_actor(self.spaghetti.tl)
-            
+        
         self.refocus_camera()
         
         #we can now enable the save session option
@@ -292,7 +293,7 @@ class Window(QtGui.QMainWindow):
     
                
         
-    def OpenSegmSession(self):
+    def open_segm_session(self):
         """
         Opens a dialog to allow the user to choose a file of a previously saved session
         """
@@ -320,7 +321,7 @@ class Window(QtGui.QMainWindow):
         #to avoid, better to force the user to open a new structural if he wants to open a new tractography?
         self.openTract.setEnabled(False)
         
-    def createMenus(self):
+    def create_menus(self):
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.openStruct)
         self.fileMenu.addAction(self.openTract)
@@ -337,26 +338,26 @@ class Window(QtGui.QMainWindow):
         self.editMenu.addSeparator()
 
     
-    def createActions(self):
+    def create_actions(self):
         self.openStruct = QtGui.QAction("&Open Structural...", self,
-                shortcut=QtGui.QKeySequence("Ctrl+L"),
-                statusTip="Open an existing structural file", triggered=self.openStructFile)
+                shortcut=QtGui.QKeySequence(" +L"),
+                statusTip="Open an existing structural file", triggered=self.open_struct_file)
                  
         self.openTract = QtGui.QAction("&Open Tractography...", self,
                 shortcut=QtGui.QKeySequence("Ctrl+T"),
-                statusTip="Open an existing tractography file", triggered=self.openTractFile)
+                statusTip="Open an existing tractography file", triggered=self.open_tract_file)
                 
         self.openSeg = QtGui.QAction("&Open Segmentation result...", self,
                 shortcut=QtGui.QKeySequence("Ctrl+N"),
-                statusTip="Open an existing segmentation session file", triggered=self.OpenSegmSession)        
+                statusTip="Open an existing segmentation session file", triggered=self.open_segm_session)        
 
         self.saveAct = QtGui.QAction("&Save segmentation", self,
                 shortcut=QtGui.QKeySequence.Save,
-                statusTip="Save the current segmentation session to disk", triggered=self.saveFile)
+                statusTip="Save the current segmentation session to disk", triggered=self.save_file)
                 
         self.runSegmentation = QtGui.QAction("&Segmentation", self,
                 shortcut=QtGui.QKeySequence("Ctrl+G"),
-                statusTip="Start the segmentation process", triggered=self.segmentTract)
+                statusTip="Start the segmentation process", triggered=self.segment_tract)
        
 
         self.exitAct = QtGui.QAction("E&xit", self, shortcut="Ctrl+Q",
@@ -639,6 +640,19 @@ class GLWidget(QtOpenGL.QGLWidget):
         
         
 if __name__ == '__main__':
+<<<<<<< HEAD
+#
+    screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
+    wind = Window(width=screenSize.width(),height=screenSize.height())
+    wind.show()
+#
+#    app = QtGui.QApplication(sys.argv)
+#    screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
+#    wind = Window(width=screenSize.width(),height=screenSize.height())
+#    wind.show()
+#    sys.exit(app.exec_())
+# 
+=======
 
     screenSize= QtGui.QApplication.desktop().availableGeometry (screen = -1).size()
     wind = Window(width=screenSize.width(),height=screenSize.height())
@@ -650,4 +664,5 @@ if __name__ == '__main__':
     # wind.show()
     # sys.exit(app.exec_())
  
+>>>>>>> 7c7953225e9ad6ef084ee1370db8c8906e444c89
         
