@@ -11,7 +11,6 @@ from pyglet.gl import *
 from pyglet.lib import load_library
 
 # dipy modules
-from dipy.segment.quickbundles import QuickBundles
 from dipy.io.dpy import Dpy
 from dipy.io.pickles import load_pickle
 from dipy.viz.colormap import orient2rgb
@@ -36,10 +35,9 @@ from manipulator import Manipulator
 
 from itertools import chain
 
-from dipy.segment.quickbundles import QuickBundles
-
 import time
 from sklearn.cluster import MiniBatchKMeans
+
 
 question_message = """
 >>>>Track Labeler
@@ -108,7 +106,6 @@ def compute_colors(streamlines, alpha):
     for curve in streamlines:
         color[counter:counter+len(curve),:3] = streamline2rgb(curve).astype('f4')
         counter += len(curve)
-
     color[:,3] = alpha
     return color
 
@@ -217,6 +214,7 @@ class StreamlineLabeler(Actor, Manipulator):
         self.mouse_y=None
 
         self.buffers = buffers
+        
 
         self.clusters = clusters
         # MBKM:
@@ -268,13 +266,116 @@ class StreamlineLabeler(Actor, Manipulator):
         self.clustering_parameter = clustering_parameter
         self.clustering_parameter_max = clustering_parameter_max
         self.full_dissimilarity_matrix = full_dissimilarity_matrix
-
-
+        self.cantroi = 0
+    
+    def set_streamlines_ROIs(self, streamlines_rois_ids):
+        """
+        Set streamlines belonging to ROIs
+        """
+        #1 Save the state before any ROI was applied
+        if self.cantroi ==0:
+            self.clusters_before_roi = copy.copy(self.clusters)
+            self.cantroi = 1
+        # 2 Assign the new set of streamlines
+        self.streamline_ids = np.copy(streamlines_rois_ids)
+        # 3 In order to keep the clustering philosophy for later reclustering, we have to cluster that new set of streamlines
+        clusters = mbkm_wrapper(self.full_dissimilarity_matrix, 1, self.streamline_ids)
+        
+        # 0) Restore original color to selected representatives.
+        self.unselect_all()
+        # 1) sync self.representative_ids_ordered with new clusters:
+        self.representative_ids_ordered = sorted(clusters.keys())
+        # 2) change first and count buffers of representatives:
+        self.representatives_first = np.ascontiguousarray(self.streamlines_first[self.representative_ids_ordered], dtype='i4')
+        self.representatives_count = np.ascontiguousarray(self.streamlines_count[self.representative_ids_ordered], dtype='i4')
+        # 3) recompute self.representatives:
+        # (this is needed just for get_pointed_representative())
+        self.representatives = buffer2coordinates(self.representatives_buffer,
+                                                  self.representatives_first,
+                                                  self.representatives_count)
+        # 4) recompute self.streamlines_visualized_first/count:
+        streamlines_ids = list(reduce(chain, [clusters[rid] for rid in clusters]))
+        self.streamlines_visualized_first = np.ascontiguousarray(self.streamlines_first[streamlines_ids], dtype='i4')
+        self.streamlines_visualized_count = np.ascontiguousarray(self.streamlines_count[streamlines_ids], dtype='i4')
+ 
+        self.clusters_reset(clusters)
+        self.recluster_action()
+        self.select_all()
+        self.hide_representatives = True
+        self.expand = True
+        self.expand_collapse_selected_action()
+               
+         
+    def reset_state(self):
+        """
+        Show clustering state before any ROI was applied 
+        """
+        try:
+            self.clusters_before_roi
+            self.hide_representatives = False
+            # 0) Restore original color to selected representatives.
+            self.unselect_all()
+            # 1) sync self.representative_ids_ordered with new clusters:
+            self.representative_ids_ordered = sorted(self.clusters_before_roi.keys())
+            # 2) change first and count buffers of representatives:
+            self.representatives_first = np.ascontiguousarray(self.streamlines_first[self.representative_ids_ordered], dtype='i4')
+            self.representatives_count = np.ascontiguousarray(self.streamlines_count[self.representative_ids_ordered], dtype='i4')
+            # 3) recompute self.representatives:
+            # (this is needed just for get_pointed_representative())
+            self.representatives = buffer2coordinates(self.representatives_buffer,
+                                                      self.representatives_first,
+                                                      self.representatives_count)
+            # 4) recompute self.streamlines_visualized_first/count:
+            streamlines_ids = list(reduce(chain, [self.clusters_before_roi[rid] for rid in self.clusters_before_roi]))
+            self.streamlines_visualized_first = np.ascontiguousarray(self.streamlines_first[streamlines_ids], dtype='i4')
+            self.streamlines_visualized_count = np.ascontiguousarray(self.streamlines_count[streamlines_ids], dtype='i4')
+     
+            self.clusters_reset(self.clusters_before_roi)
+            self.recluster_action()
+        except AttributeError:
+            pass
+            
+#        
+#    def reset_parameters(self, clusters, representative_buffers=None, representatives_line_width=5.0, representatives_alpha=1.0, clustering_parameter=None, clustering_parameter_max=None, full_dissimilarity_matrix=None):
+#        
+#        self.clusters = clusters 
+#        self.representative_ids_ordered = sorted(self.clusters.keys())
+#
+#        self.representatives_alpha = representatives_alpha
+#            
+#        self.hide_representatives = False
+#        self.expand = False        
+#        self.representatives_line_width = representatives_line_width
+#
+#        # representative buffers:
+#        if representative_buffers is None:
+#            
+#            representative_buffers = compute_buffers_representatives(self.buffers, self.representative_ids_ordered)
+#
+#            self.representatives_buffer = representative_buffers['buffer']
+#            self.representatives_colors = representative_buffers['colors']
+#            self.representatives_first = representative_buffers['first']
+#            self.representatives_count = representative_buffers['count']
+#
+#            self.representatives = buffer2coordinates(self.representatives_buffer,
+#                                                  self.representatives_first,
+#                                                  self.representatives_count)
+#                                                  
+#            # Clustering:
+#        self.clustering_parameter = clustering_parameter
+#        self.clustering_parameter_max = clustering_parameter_max
+#        # MBKM:
+#        Manipulator.__init__(self, initial_clusters=self.clusters, clustering_function=mbkm_wrapper)
+#        self.full_dissimilarity_matrix = full_dissimilarity_matrix
+#        self.history = []
+#        self.simple_history_start()        
+#        
     def draw(self):
         """Draw virtual and real streamlines.
 
         This is done at every frame and therefore must be real fast.
         """
+        
         glDisable(GL_LIGHTING)
         # representatives
         glEnable(GL_DEPTH_TEST)
@@ -311,12 +412,14 @@ class StreamlineLabeler(Actor, Manipulator):
                                     self.streamlines_visualized_count.ctypes.data, 
                                     len(self.streamlines_visualized_first))
             glPopMatrix()
+        
         glDisableClientState(GL_COLOR_ARRAY)
         glDisableClientState(GL_VERTEX_ARRAY)      
         glLineWidth(1.)
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
         glDisable(GL_LINE_SMOOTH)
+        glEnable(GL_LIGHTING)
 
 
     # DO WE NEED THIS METHOD?
@@ -407,10 +510,11 @@ class StreamlineLabeler(Actor, Manipulator):
                         for xyz in self.representatives])       
         line_distance, screen_distance = tmp[:,0], tmp[:,1]
         return self.representative_ids_ordered[np.argmin(line_distance + screen_distance)]
-
-
+        
+    
     def select_action(self, representative_id):
-        """Steps for visualizing a selected representative.
+        """
+        Steps for visualizing a selected representative.
         """
         print "select_action:", representative_id
         rid_position = self.representative_ids_ordered.index(representative_id)
@@ -463,12 +567,14 @@ class StreamlineLabeler(Actor, Manipulator):
         if self.expand:
             print "Expand."
             if len(self.selected)>0:
+
                 selected_streamlines_ids = list(reduce(chain, [self.clusters[rid] for rid in self.selected]))
                 self.streamlines_visualized_first = np.ascontiguousarray(self.streamlines_first[selected_streamlines_ids], dtype='i4')
                 self.streamlines_visualized_count = np.ascontiguousarray(self.streamlines_count[selected_streamlines_ids], dtype='i4')
         else:
             print "Collapse."
-
+            
+    
     def remove_unselected_action(self):
         print "Backspace: remove unselected."
         # Note: the following steps needs to be done in the given order.
@@ -488,7 +594,7 @@ class StreamlineLabeler(Actor, Manipulator):
         streamlines_ids = list(reduce(chain, [self.clusters[rid] for rid in self.clusters]))
         self.streamlines_visualized_first = np.ascontiguousarray(self.streamlines_first[streamlines_ids], dtype='i4')
         self.streamlines_visualized_count = np.ascontiguousarray(self.streamlines_count[streamlines_ids], dtype='i4')
-
+       
 
     def recluster_action(self):
         self.select_all()

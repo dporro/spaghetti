@@ -35,9 +35,12 @@ class Manipulator(object):
         """
         self.initial_clusters = copy.deepcopy(initial_clusters)
         self.history = []
+        self.streamline_ids = 0
+        self.numstream_handler = EventHook()
         self.clusters_reset(initial_clusters)
         self.simple_history_start()
         self.clustering_function = clustering_function
+        
         
 
     def clusters_reset(self, clusters):
@@ -51,8 +54,8 @@ class Manipulator(object):
         self.expanded = set()
         self.show_representatives = True
         self.history.append('clusters_reset('+str(clusters)+')')
+        self.numstream_handler.fire(len(self.streamline_ids))
     
-
     def select(self, representative_id):
         """Select one representative.
         """
@@ -355,4 +358,30 @@ if __name__ == '__main__':
     m.recluster(2)
     print "clusters:", m.clusters
     print "selected:", m.selected
+
+
+class EventHook(object):
+    """
+    Class that allows simulating the events-delegate C# functionality
+    Check later if there is a simplest way to do it in a more Pythonian way
+    """
+    def __init__(self):
+        self.__handlers = []
+ 
+    def __iadd__(self, handler):
+        self.__handlers.append(handler)
+        return self
+ 
+    def __isub__(self, handler):
+        self.__handlers.remove(handler)
+        return self
+         
+    def fire(self, *args, **keywargs):
+        for handler in self.__handlers:
+            handler(*args, **keywargs)
+         
+    def clearObjectHandlers(self, inObject):
+        for theHandler in self.__handlers:
+            if theHandler.im_self == inObject:
+                self -= theHandler
     

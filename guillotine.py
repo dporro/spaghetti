@@ -186,10 +186,10 @@ class Guillotine(Slicer):
         if symbol == Qt.Key_3:
             self.show_k = not self.show_k
 
-        if symbol == Qt.Key_R:
-            self.slice_i(self.I / 2)
-            self.slice_j(self.J / 2)
-            self.slice_k(self.K / 2)
+#        if symbol == Qt.Key_R:
+#            self.slice_i(self.I / 2)
+#            self.slice_j(self.J / 2)
+#            self.slice_k(self.K / 2)
             
 
 def anteriorzplus(xyz):

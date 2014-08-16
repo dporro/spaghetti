@@ -12,120 +12,225 @@ pyglet.options['debug_font'] = debug
 pyglet.options['debug_x11'] = debug
 pyglet.options['debug_trace'] = debug
 
+
 import numpy as np
 import vtk
 import nibabel as nib
 from streamshow import StreamlineLabeler
 from guillotine import Guillotine
 from dipy.io.dpy import Dpy
+from dipy.tracking._utils import affine_for_trackvis
 import pickle
 from streamshow import compute_buffers, mbkm_wrapper
+from fos.coords import img_to_ras_coords
+from fos.actor import *
+from fos.world import *
+from rois import *
+from itertools import chain
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
-import pdb
+from sklearn.neighbors import KDTree
+
+import os
 
 
 
 
 class Spaghetti():
 
-    def __init__(self, structpath=None, segmpath=None):
-        
-        if segmpath == None:
-            
-            self.structpath = structpath
-            
-        else:
-            print "Loading saved session file"
-            segm_info = pickle.load(open(segmpath)) 
-            self.state = segm_info['segmsession']  
-            
-            self.structpath=segm_info['structfilename']
-            self.tracpath=segm_info['tractfilename']   
-            
-            
-        #load T1 volume registered in MNI space
+    def __init__(self):
+        """
+        Initializing the class that contains that manipulates the scene, actors and all the logic of Tractome
+        """
+        self.scene = Scene(scenename = 'Main Scene', activate_aabb = False)
+        self.d_active_ROIS = {}
+        self.list_ROIS = []
+        self.list_oper_ROIS = []
+        self.streamlines_ROIs = []
+       
+     
+    def loading_structural(self, structpath = None):
+        """
+        Loading structural data
+        """
+        #load structural volume
         print "Loading structural information file"
-        img = nib.load(self.structpath)
-        data = img.get_data()
-        self.affine = img.get_affine()
-        
-        
-        #remove the singleton dimension in case of files (.trk for example) in which t=1, but still the data has 4 dimensions 
-        self.data = (np.interp(np.squeeze(data), [data.min(), data.max()], [0, 255]))
+        self.structpath = structpath
+        self.img = nib.load(self.structpath)
+        data = self.img.get_data()
+        self.affine = self.img.get_affine()
+        self.dims = data.shape[:3]
         
         #Create the Guillotine object
-        self.guil = Guillotine('Volume Slicer', self.data, self.affine)
+        data = (np.interp(data, [data.min(), data.max()], [0, 255]))
+        self.guil = Guillotine('Volume Slicer', data, np.copy(self.affine))
+        self.scene.add_actor(self.guil) 
+    
         
-        
-    def segmentation(self, tracpath=None):
-        
+    def loading_full_tractograpy(self, tracpath=None):
+        """
+        Loading full tractography and creates StreamlineLabeler to show it all
+        """
         #load the tracks registered in MNI space
+        
         self.tracpath=tracpath
-        tracks_basename, addext, tracks_format = nib.filename_parser.splitext_addext(self.tracpath,addexts=('.trk', '.dpy', '.vtk'),match_case=False)
+        basename = os.path.basename(self.tracpath)
+        tracks_basename, tracks_format = os.path.splitext(basename)
         
-        general_info_filename = tracks_basename + '.spa'
+        if tracks_format == '.dpy': 
+            
+            dpr = Dpy(self.tracpath, 'r')
+            print "Loading", self.tracpath
+            self.T = dpr.read_tracks()
+            dpr.close()
+            self.T = np.array(self.T, dtype=np.object)
+
+            
+        elif tracks_format == '.trk': 
+            streams, self.hdr = nib.trackvis.read(self.tracpath, points_space='voxel')
+            print "Loading", self.tracpath
+            self.T = np.array([s[0] for s in streams], dtype=np.object)
+                        
         
+        tracks_directoryname = os.path.dirname(self.tracpath) + '/.temp/'
+        general_info_filename = tracks_directoryname + tracks_basename + '.spa'
+                
         #Check if there is the .spa file that contains all the computed information from the tractography anyway and try to load it
         try:
             print "Looking for general information file"
             self.load_info(general_info_filename)
-            
-          
+                    
         except IOError:
-            print "General information not found, loading tractography to recompute buffers and dissimilarity matrix."
-            if tracks_format == '.dpy': 
-                dpr = Dpy(self.tracpath, 'r')
-                print "Loading", self.tracpath
-                T = dpr.read_tracks()
-                dpr.close()
-                T = np.array(T, dtype=np.object)
-                
-            elif tracks_format == '.trk': 
-                streams, hdr = nib.trackvis.read(self.tracpath, points_space='voxel')
-                print "Loading", self.tracpath
-                T = np.array([s[0] for s in streams], dtype=np.object)
-                
-            elif tracks_format == '.vtk': 
-                T = self.reading_VTK_tract()
-             
+            print "General information not found, recomputing buffers"
+
             print "Computing buffers."
-            pdb.set_trace()
-            self.buffers = compute_buffers(T, alpha=1.0, save=False)
+            self.buffers = compute_buffers(self.T, alpha=1.0, save=False)
             
-            #compute dissimilarity matrix with given num_prototypes prototypes by SFF method
-            print "Computing dissimilarity representation."
+            print "Computing dissimilarity matrix"
             self.num_prototypes = 40
-            self.full_dissimilarity_matrix = compute_disimilarity(T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
+            self.full_dissimilarity_matrix = compute_disimilarity(self.T, distance=bundles_distances_mam, prototype_policy='sff', num_prototypes=self.num_prototypes)
                 
             # compute initial MBKM with given n_clusters
             print "Computing MBKM"
-            n_clusters = 150
-            streamlines_ids = np.arange(self.full_dissimilarity_matrix.shape[0], dtype=np.int)
+
+            size_T = len(self.T)
+            if  size_T > 150:
+                n_clusters = 150
+            else:
+                n_clusters = size_T
+                
+            streamlines_ids = np.arange(size_T, dtype=np.int)
             self.clusters = mbkm_wrapper(self.full_dissimilarity_matrix, n_clusters, streamlines_ids)
-                
-                
+            
             print "Saving computed information from tractography"
+            
+            if not os.path.exists(tracks_directoryname):
+                os.makedirs(tracks_directoryname)
             self.save_info(general_info_filename)
-         
-           
-        # create the interaction system for tracks 
-        self.tl = StreamlineLabeler('Bundle Picker',
+            
+       
+        # create the interaction system for tracks, 
+        self.streamlab  = StreamlineLabeler('Bundle Picker',
                            self.buffers, self.clusters,
-                           vol_shape=self.data.shape[:3], 
-                           affine=self.affine,
+                           vol_shape=self.dims, 
+                           affine=np.copy(self.affine),
                            clustering_parameter=len(self.clusters),
                            clustering_parameter_max=len(self.clusters),
                            full_dissimilarity_matrix=self.full_dissimilarity_matrix)
         
         
-        try:
-            self.state
-            self.tl.set_state(self.state)
-        except AttributeError:
-            pass
+        if hasattr(self, 'state'):
+            self.streamlab.set_state(self.state)
+                               
+        self.scene.add_actor(self.streamlab)
+                
+    def load_segmentation(self, segpath=None):
+        """
+        Loading file containing a previous segmentation
+        """
+        print "Loading saved session file"
+        segm_info = pickle.load(open(segpath)) 
+        self.state = segm_info['segmsession']  
+            
+        self.structpath=segm_info['structfilename']
+        self.tracpath=segm_info['tractfilename']   
             
             
+        #load T1 volume registered in MNI space
+        print "Loading structural information file"
+        
+        self.loading_structural(self.structpath)
+            
+        #load tractography
+        self.loading_full_tractograpy(self.tracpath)
+        
+        self.scene.update()
+
+    def max_num_clusters(self):
+        
+        n_clusters = len(self.streamlab.streamline_ids)
+        if (len(self.streamlab.streamline_ids) < 1e5) and (len(self.streamlab.streamline_ids)>= 50):
+            default = 50
+        else:
+            default = len(self.streamlab.streamline_ids)
+            
+        return n_clusters,  default
+#        
+    def recluster(self,  n_clusters):
+            """
+            Re-cluster current selected set of streamlines
+            """
+            # MBKM:
+            self.streamlab.recluster(n_clusters, data=self.full_dissimilarity_matrix)
+            self.streamlab.hide_representatives = False
+#            
+    def loading_mask(self,  filename,  color):
+        """
+        Loads a mask
+        """
+        print "Loading mask"
+
+        img = nib.load(filename)
+        mask = img.get_data()
+        itemindex = np.where(mask!=0)
+        
+        self.ROIMask(os.path.basename(filename), itemindex, color)
+        
+    def ROIMask(self, nameroi,  mask,  color):
+        """
+        Create actor for ROI from loaded mask and add it to the scene
+        """
+        coords_streamlines, index_streamlines = self.compute_dataforROI()
+        
+        self.list_ROIS.append(nameroi)
+        self.d_active_ROIS[nameroi] = False
+        self.list_oper_ROIS.append('and')
+        
+        #create Mask actor and add it to scene
+        mask = Mask(nameroi, color.getRgbF(), color.name(), coords_streamlines, mask, index_streamlines, self.affine, self.dims)
+        self.scene.add_actor(mask)
+#        
+#    def from_las_to_lps(self, ydim, convert_to_lps = 1):
+#        """
+#        Changes orientation of tractography from Left-Anterior-Superior to Left-Posterior-Superior (y dim flipped). 
+#        This is to be in accordance with FSL and Trackvis.
+#        """
+#        for i in range(len(self.T)):
+#            self.T[i][:, 1]=ydim - self.T[i][:, 1]
+#
+#        self.affine[1, 1] = self.affine[1, 1]*(-1)
+#            
+#
+#        
+    def max_coordinates(self):
+        """
+        Computing maximum value of each coordinate from the whole tractography
+        """
+        max= [np.amax(t,axis=0).tolist()  for t in self.T]
+        coords_max = np.amax(max,axis=0)
+         
+        return coords_max
+#        
     def save_info(self,filepath):
         """
         Saves all the information from the tractography required for the whole segmentation procedure
@@ -134,8 +239,8 @@ class Spaghetti():
         print "Saving information of the tractography for the segmentation"
         print filepath
         pickle.dump(info, open(filepath,'w'), protocol=pickle.HIGHEST_PROTOCOL)
-        
-    
+#        
+#    
     def load_info(self,filepath):
         """
         Loads all the information from the tractography required for the whole segmentation procedure
@@ -154,39 +259,200 @@ class Spaghetti():
         
         print "Save segmentation result from current session"
         filename=filename[0]+'.seg'
-        self.state = self.tl.get_state()
+        self.state = self.streamlab.get_state()
         seg_info={'structfilename':self.structpath, 'tractfilename':self.tracpath, 'segmsession':self.state}
         pickle.dump(seg_info, open(filename,'w'), protocol=pickle.HIGHEST_PROTOCOL)
         
+   
+    def save_trk(self, filename):
+        """
+        Save current streamlines in .trk file
+        """
+        
+        filename=filename[0]+'.trk'
+        hdr= nib.trackvis.empty_header()
+        hdr['voxel_size'] = self.img.get_header().get_zooms()[:3]
+        hdr['voxel_order'] = 'LAS'
+        hdr['dim'] = self.dims
+        hdr['vox_to_ras'] = self.affine
+
+        
+        if len(self.streamlines_ROIs)>0:
+            streamlines = [(s,  None,  None) for s in self.T[self.streamlines_ROIs]]
+            
+        else:
+            try:
+                self.clusters
+                streamlines_ids = list(self.streamlab.streamline_ids)
+                streamlines = [(s,  None,  None) for s in self.T[streamlines_ids]]
+            
+            except AttributeError:
+                streamlines = [(s,  None,  None) for s in self.T]
+        
+        nib.trackvis.write(filename, streamlines, hdr, points_space = 'voxel')
+#        
+#        
+#    def compute_kdtree(self):
+#        """
+#        Compute kdtree from tactography for ROIs and extensions
+#        """
+#        self.kdt=KDTree(self.coords)
+#        
+    def compute_dataforROI(self):
+        """
+        Compute info from tractography to provide it to ROI
+        """
+        
+        if hasattr(self.streamlab, 'clusters_before_roi'):
+            clusters = self.streamlab.clusters_before_roi
+            streamlines_ids = list(reduce(chain, [clusters[rid] for rid in clusters]))
+        else:
+            streamlines_ids = list(self.streamlab.streamline_ids)
+        streamlines_ids.sort()
+        coords = np.vstack(self.T[streamlines_ids])
+        index = np.concatenate([i*np.ones(len(s)) for i,s in enumerate(self.T[streamlines_ids])]).astype(np.int) 
+     
+        return coords,  index
+        
+    def create_ROI_sphere(self, nameroi,  coordx, coordy, coordz, radius, method, color):
+        """
+        Create actor for ROI sphere and add it to the scene
+        """
+        coords_streamlines, index_streamlines = self.compute_dataforROI()
+        
+        self.list_ROIS.append(nameroi)
+        self.d_active_ROIS[nameroi] = False
+        self.list_oper_ROIS.append('and')
+        
+        #create Sphere actor and add it to scene
+        sphere = SphereTractome(nameroi, coordx, coordy, coordz, radius,  color.getRgbF(),  color.name(),  method, coords_streamlines, index_streamlines, self.affine, self.dims)
+        
+        self.scene.add_actor(sphere)
+         
+        
+    def update_ROI(self, nameroi, newname = None,  coordx=None, coordy=None, coordz=None, radius=None, color=None,  method = None,  rebuild = False,  pos_activeroi = None):
+        """
+        Updates any parameter of the specified ROI
+        """
+ 
+        if coordx is not None:
+            self.scene.actors[nameroi].update_xcoord(coordx)
+            
+        if coordy is not None:
+            self.scene.actors[nameroi].update_ycoord(coordy)
+            
+        if coordz is not None:
+            self.scene.actors[nameroi].update_zcoord(coordz)
+            
+        if radius is not None:
+            self.scene.actors[nameroi].update_radius(radius)
+            
+        if color is not None:
+            self.scene.actors[nameroi].update_color (color) 
+            
+        if method is not None:
+            self.from_las_to_lps(self.dims[1])
+            value_dict = self.d_active_ROIS[nameroi]
+            del self.d_active_ROIS[nameroi]
+            actor_roi = self.scene.actors[str(nameroi)]
+            self.scene.remove_actor(str(nameroi))
+            self.create_ROI_sphere(str(nameroi),  actor_roi.coordinates[0], actor_roi.coordinates[1], actor_roi.coordinates[2], actor_roi.radius, method, actor_roi.color,  actor_roi.colorname)
+            
+        if rebuild:
+            self.compute_streamlines_ROIS()
+        
+        if newname is not None:
+            value_dict = self.d_active_ROIS[nameroi]
+            del self.d_active_ROIS[nameroi]
+            self.d_active_ROIS[newname] = value_dict
+            self.list_ROIS[pos_activeroi] = newname 
+            actor_roi = self.scene.actors[nameroi]
+            actor_roi.name = newname
+            self.scene.remove_actor(str(nameroi))
+            self.scene.add_actor(actor_roi)
+            
+          
+    def activation_ROIs(self, pos_activeroi,  activate, operator=None):
+        """
+        Activates or deactivates the specified ROI. In case it is activated, the operator to be applied is also specified
+        """
+
+        self.d_active_ROIS[self.list_ROIS[pos_activeroi]] = activate
+        if activate:
+            self.list_oper_ROIS[pos_activeroi] = operator
+            
+    def compute_streamlines_ROIS(self):
+        """
+        Obtain set of streamlines that pass through the specified ROIs
+        """
+        streamlines_ROIs = []
+        last_chkd = 0
+        for pos in range(0, len(self.list_ROIS)):
+            name_roi  = self.list_ROIS[pos]
+            if self.d_active_ROIS[name_roi]:
+                if pos==0:
+                    streamlines_ROIs = set(self.scene.actors[name_roi].streamlines)
+                else:
+                    current_roi_streamlines = set(self.scene.actors[name_roi].streamlines)
+                    if self.list_oper_ROIS[pos] == 'and':
+                        streamlines_ROIs = streamlines_ROIs & current_roi_streamlines
+                    if self.list_oper_ROIS[pos] == 'or':
+                        streamlines_ROIs = streamlines_ROIs | current_roi_streamlines
+                    else:
+                        streamlines_ROIs = current_roi_streamlines
+                        
+                last_chkd +=1
+         
+        self.streamlines_ROIs = list(streamlines_ROIs)  
+        if last_chkd == 0:
+            self.streamlab.reset_state()
+        else:
+
+            if len(self.streamlines_ROIs) > 0:
+                self.streamlab.set_streamlines_ROIs(self.streamlines_ROIs)
+                self.streamlab.expand = True
+            else:
+                self.streamlab.hide_representatives = True
+                self.streamlab.expand = False
     
-    def reading_VTK_tract(self):
+    def information_from_ROI(self, name_roi):
         """
-        Read Entire Tractography from .vtk file
+        Returns general information from the specified ROI
         """
-        #Reading tractography which is stored as Polydata in .vtk file
-        reader = vtk.vtkPolyDataReader()
-        reader.SetFileName(self.tracpath)
+        roi = self.scene.actors[name_roi]
+        xcoord = roi.coordinates[0]
+        ycoord = roi.coordinates[1]
+        zcoord = roi.coordinates[2] 
+        radius = roi.radius
+        color = roi.colorname
         
-        #Releasing memory
-        reader.ReleaseDataFlagOn()
-        reader.GetOutput().ReleaseDataFlagOn()
-        reader.Update()
+        return xcoord,  ycoord,  zcoord,  radius,  color
         
-        data=reader.GetOutput()
         
-        del reader
-        nstreamlines=data.GetNumberOfLines()
-      
-        #Obtaining the points corresponding to the ith streamline, which are associated to the Ids in the ith cell.
-        T=[]
-        for i in range(nstreamlines-1):
-            pts = data.GetCell(i).GetPoints()    
-            T.append(np.array([pts.GetPoint(j) for j in range(pts.GetNumberOfPoints())],dtype=np.float32))
-             
-        T = np.array(T, dtype=np.object)
+    def clear_all(self):
+        """
+        Actors of scene will be removed in order to load new ones.
+        """
+        self.scene.actors.clear()
+        self.scene.update()
         
-       
-        return T
+    def clear_actor(self,  name):
+        """
+        Specified actor will be removed from the scenename
+        """
+        self.scene.remove_actor(name)
+        
+    def show_hide_actor(self,  name, state):
+        """
+        Show or hide the specified actor
+        """
+        if state:
+            self.scene.actors[name].show()
+           
+        else:
+            self.scene.actors[name].hide()
+            
+        self.scene.update()
         
         
         

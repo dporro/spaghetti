@@ -5,11 +5,12 @@ fos : https://github.com/fos/fos.git
 dipy: packaged from neurodebian
 vtk: packaged from neurodebian
 scikit-learn (just for MBKM): packaged from neurodebian
+pyside : Python bindings for the Qt cross-platform application and UI framework. Packaged from neurodebian
 
 
-Short title: Interactive tractography segmentation tool 
+Short title: Tractome: Interactive tractography segmentation tool 
 
-Spaghetti is a new interactive tool for human brain tractography segmentation. 
+Tractome is a new interactive tool for human brain tractography segmentation. 
 It supports neuroanatomists and medical doctors in their study of white matter anatomical structures from 
 diffusion magnetic resonance imaging (dMRI) data. Unlike previous systems for tractography segmentation, this is
 a computer-assisted tool in which the user interacts with a summary of the tractography instead of the whole set
@@ -24,5 +25,12 @@ Spaghetti is written in Python language and it supports the TrackVis format and 
 *To execute the application:
 
 - cd folder where the application is
-- ipython streamwindow.py
+- cd ui
+- ipython mainwindow.py
 
+Main functionalities:
+- Loads structural (img, nii) and tractography (.dpy, .trk) files
+- Interactive manipulation of the tractography data by showing representatives of computed clusters
+- Allows picking, removing clusters (representatives) and re-clustering such that data can be better explored
+- ROI masks (.nii) can be applied 
+- ROI spheres can also be created to filter the data, and further re-clustered for a better exploration
