@@ -24,6 +24,7 @@ Spaghetti is written in Python language and it supports the TrackVis format and 
 
 *To execute the application:
 
+- add Fos to PYTHONPATH
 - cd folder where the application is
 - cd ui
 - ipython --gui=qt mainwindow.py
