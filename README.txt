@@ -26,8 +26,9 @@ Spaghetti is written in Python language and it supports the TrackVis format and 
 
 - add Fos to PYTHONPATH
 - cd folder where the application is
+- ipython --gui=qt 
 - cd ui
-- ipython --gui=qt mainwindow.py
+- run mainwindow.py
 
 Main functionalities:
 - Loads structural (img, nii) and tractography (.dpy, .trk) files
