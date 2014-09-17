@@ -12,7 +12,6 @@ pyglet.options['debug_font'] = debug
 pyglet.options['debug_x11'] = debug
 pyglet.options['debug_trace'] = debug
 
-
 import numpy as np
 import vtk
 import nibabel as nib
@@ -30,7 +29,6 @@ from itertools import chain
 from dipy.tracking.distances import bundles_distances_mam
 from dissimilarity_common import compute_disimilarity
 from sklearn.neighbors import KDTree
-
 import os
 
 
@@ -46,8 +44,7 @@ class Spaghetti():
         self.d_active_ROIS = {}
         self.list_ROIS = []
         self.list_oper_ROIS = []
-        self.streamlines_ROIs = []
-       
+     
      
     def loading_structural(self, structpath = None):
         """
@@ -209,19 +206,7 @@ class Spaghetti():
         #create Mask actor and add it to scene
         mask = Mask(nameroi, color.getRgbF(), color.name(), coords_streamlines, mask, index_streamlines, self.affine, self.dims)
         self.scene.add_actor(mask)
-#        
-#    def from_las_to_lps(self, ydim, convert_to_lps = 1):
-#        """
-#        Changes orientation of tractography from Left-Anterior-Superior to Left-Posterior-Superior (y dim flipped). 
-#        This is to be in accordance with FSL and Trackvis.
-#        """
-#        for i in range(len(self.T)):
-#            self.T[i][:, 1]=ydim - self.T[i][:, 1]
-#
-#        self.affine[1, 1] = self.affine[1, 1]*(-1)
-#            
-#
-#        
+  
     def max_coordinates(self):
         """
         Computing maximum value of each coordinate from the whole tractography
@@ -268,7 +253,7 @@ class Spaghetti():
         """
         Save current streamlines in .trk file
         """
-        
+
         filename=filename[0]+'.trk'
         hdr= nib.trackvis.empty_header()
         hdr['voxel_size'] = self.img.get_header().get_zooms()[:3]
@@ -276,19 +261,8 @@ class Spaghetti():
         hdr['dim'] = self.dims
         hdr['vox_to_ras'] = self.affine
 
-        
-        if len(self.streamlines_ROIs)>0:
-            streamlines = [(s,  None,  None) for s in self.T[self.streamlines_ROIs]]
-            
-        else:
-            try:
-                self.clusters
-                streamlines_ids = list(self.streamlab.streamline_ids)
-                streamlines = [(s,  None,  None) for s in self.T[streamlines_ids]]
-            
-            except AttributeError:
-                streamlines = [(s,  None,  None) for s in self.T]
-        
+        streamlines_ids = list(self.streamlab.streamline_ids)
+        streamlines = [(s,  None,  None) for s in self.T[streamlines_ids]]
         nib.trackvis.write(filename, streamlines, hdr, points_space = 'voxel')
 #        
 #        
@@ -302,19 +276,12 @@ class Spaghetti():
         """
         Compute info from tractography to provide it to ROI
         """
-        
-        if hasattr(self.streamlab, 'clusters_before_roi'):
-            clusters = self.streamlab.clusters_before_roi
-            streamlines_ids = list(reduce(chain, [clusters[rid] for rid in clusters]))
-        else:
-            streamlines_ids = list(self.streamlab.streamline_ids)
-        streamlines_ids.sort()
-        coords = np.vstack(self.T[streamlines_ids])
-        index = np.concatenate([i*np.ones(len(s)) for i,s in enumerate(self.T[streamlines_ids])]).astype(np.int) 
+        coords = np.vstack(self.T)
+        index = np.concatenate([i*np.ones(len(s)) for i,s in enumerate(self.T)]).astype(np.int)
      
         return coords,  index
         
-    def create_ROI_sphere(self, nameroi,  coordx, coordy, coordz, radius, method, color):
+    def create_ROI_sphere(self, nameroi,  coordx, coordy, coordz, radius, method, color,  colorname):
         """
         Create actor for ROI sphere and add it to the scene
         """
@@ -325,7 +292,7 @@ class Spaghetti():
         self.list_oper_ROIS.append('and')
         
         #create Sphere actor and add it to scene
-        sphere = SphereTractome(nameroi, coordx, coordy, coordz, radius,  color.getRgbF(),  color.name(),  method, coords_streamlines, index_streamlines, self.affine, self.dims)
+        sphere = SphereTractome(nameroi, coordx, coordy, coordz, radius,  color,  colorname,  method, coords_streamlines, index_streamlines, self.affine, self.dims)
         
         self.scene.add_actor(sphere)
          
@@ -351,12 +318,11 @@ class Spaghetti():
             self.scene.actors[nameroi].update_color (color) 
             
         if method is not None:
-            self.from_las_to_lps(self.dims[1])
             value_dict = self.d_active_ROIS[nameroi]
             del self.d_active_ROIS[nameroi]
             actor_roi = self.scene.actors[str(nameroi)]
             self.scene.remove_actor(str(nameroi))
-            self.create_ROI_sphere(str(nameroi),  actor_roi.coordinates[0], actor_roi.coordinates[1], actor_roi.coordinates[2], actor_roi.radius, method, actor_roi.color,  actor_roi.colorname)
+            self.create_ROI_sphere(str(nameroi),  actor_roi.coordinates[0], actor_roi.coordinates[1], actor_roi.coordinates[2], actor_roi.radius, method, actor_roi.color, actor_roi.colorname)
             
         if rebuild:
             self.compute_streamlines_ROIS()
@@ -396,21 +362,21 @@ class Spaghetti():
                     current_roi_streamlines = set(self.scene.actors[name_roi].streamlines)
                     if self.list_oper_ROIS[pos] == 'and':
                         streamlines_ROIs = streamlines_ROIs & current_roi_streamlines
-                    if self.list_oper_ROIS[pos] == 'or':
+                    elif self.list_oper_ROIS[pos] == 'or':
                         streamlines_ROIs = streamlines_ROIs | current_roi_streamlines
                     else:
                         streamlines_ROIs = current_roi_streamlines
                         
                 last_chkd +=1
          
-        self.streamlines_ROIs = list(streamlines_ROIs)  
         if last_chkd == 0:
             self.streamlab.reset_state()
+
         else:
 
-            if len(self.streamlines_ROIs) > 0:
-                self.streamlab.set_streamlines_ROIs(self.streamlines_ROIs)
-                self.streamlab.expand = True
+            if len(streamlines_ROIs) > 0:
+                self.streamlab.set_streamlines_ROIs(streamlines_ROIs)
+
             else:
                 self.streamlab.hide_representatives = True
                 self.streamlab.expand = False

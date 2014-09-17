@@ -96,41 +96,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spbRecluster.setValue(default)
         self.spbRecluster.setRange(1, n_stream)
         self.hSlReCluster.setValue(default)
-#        self.hSlReCluster.setSingleStep() 
         self.hSlReCluster.setMinimum(1)
         self.hSlReCluster.setMaximum(n_stream)
         self.tblTract.item(1, 1).setText(str(n_stream))
         
 
-    @Slot()
+    
     def on_dspbxcoord_valueChanged(self, value):
-        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordx = value,  rebuild= True)
+
+        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordx = value,  rebuild = self.list_chkROIS[self.activeROI].isChecked())
         self.glWidget.updateGL()
             
-    @Slot()
+    
     def on_dspbycoord_valueChanged(self, value):
-        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordy = value, rebuild= True)
+        
+        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordy = value, rebuild = self.list_chkROIS[self.activeROI].isChecked())
         self.glWidget.updateGL()
             
-    @Slot()
+    
     def on_dspbzcoord_valueChanged(self, value): 
-        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordz = value, rebuild= True)
+        
+        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  coordz = value, rebuild = self.list_chkROIS[self.activeROI].isChecked())
         self.glWidget.updateGL()
             
-    @Slot()
+    
     def on_spbrad_valueChanged(self, value): 
         
-        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(), radius=value, rebuild= True)
+        self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(), radius=value, rebuild = self.list_chkROIS[self.activeROI].isChecked())
         self.glWidget.updateGL()
     
-    @Slot()
+    
     def on_chkbvis_stateChanged(self, state): 
         """
         Shows or hides the ROI if the visibility checkbox is checked or not correspondingly
         """
         self.spaghetti.show_hide_actor(self.tblROI.item(0, 1).text(), state)
-        if self.list_chkROIS[self.activeROI].isChecked():
-            self.list_chkROIS[self.activeROI].setChecked(False)
         self.glWidget.updateGL()
         
     @Slot(QtGui.QTreeWidgetItem, int)
@@ -150,8 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         color = QtGui.QColorDialog().getColor()
         self.btncolor.setStyleSheet( u'background-color:%s' % color.name()) 
         self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  color = color.getRgbF())
-#        self.glWidget.updateGL()
-#        
+
     @Slot(int)
     def on_chkbShowTract_stateChanged(self, state):
         """
@@ -167,54 +166,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.spaghetti.show_hide_actor('Volume Slicer', state)
         self.glWidget.updateGL()
-#    
+
 #    @Slot(bool)
-#    def on_rdbTrackvis_toggled(self, checked):
+#    def on_rdbInsSphere_toggled(self, checked):
+#        """
+#        Use method of Tractome inside sphere to compute the ROI
+#        """
+#        if checked:
+#            self.roimethod = 1
+#                       
+#            self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  method = self.roimethod, rebuild= True)
+#            if len(self.list_chkROIS)>0:
+#               self.spaghetti.compute_streamlines_ROIS()
+#               
+#    @Slot(bool)
+#    def on_rdbtrackvis_toggled(self, checked):
 #        """
 #        Use method of Trackvis to compute the ROI
 #        """
-#        pdb.set_trace()
 #        if checked:
 #            self.roimethod = 0
-#            self.grb_tractomeroi.setEnabled(False)
- 
+# 
+#            self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  method = self.roimethod, rebuild= True)
 #            if len(self.list_chkROIS)>0:
-#                self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  method = self.roimethod, rebuild= True)
-#            
-#    
-#    @Slot(bool)
-#    def on_rdbTract_toggled(self, checked):
-#        """
-#        To change ROI method to tractome's version
-#        """
-#        if checked:
-#            self.grb_tractomeroi.setEnabled(True)
-#            self.rdbInsSphere.toggle()
-#               
-#       
-    @Slot(bool)
-    def on_rdbInsSphere_toggled(self, checked):
-        """
-        Use method of Tractome inside sphere to compute the ROI
-        """
-        if checked:
-            self.roimethod = 1
-                       
-            if len(self.list_chkROIS)>0:
-               self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  method = self.roimethod, rebuild= True)
+#               self.spaghetti.compute_streamlines_ROIS()
     
-#       
-#    @Slot(bool)
-#    def on_rdbIntSphere_toggled(self, checked):
-#        """
-#        Use method of Tractome intersect sphere to compute the ROI.
-#        """
-#        if checked:
-#            self.roimethod = 2
-#                        
-#            if len(self.list_chkROIS)>0:
-#               self.spaghetti.update_ROI(self.tblROI.item(0, 1).text(),  method = self.roimethod, rebuild= True)
-#    
     
     @Slot(int)
     def on_spbRecluster_valueChanged(self, p0):
@@ -237,30 +213,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.spaghetti.recluster(self.spbRecluster.value())
     
-#    @Slot()
-#    def on_spbExtClust_editingFinished(self):
-#        """
-#        Slot documentation goes here.
-#        """
-#        # TODO: not implemented yet
-#        raise NotImplementedError
-#    
-#    @Slot(int)
-#    def on_spbExtClust_valueChanged(self, p0):
-#        """
-#        Slot documentation goes here.
-#        """
-#        # TODO: not implemented yet
-#        raise NotImplementedError
-#    
-#    @Slot(int)
-#    def on_vSlExtClust_valueChanged(self, value):
-#        """
-#        Slot documentation goes here.
-#        """
-#        # TODO: not implemented yet
-#        raise NotImplementedError
-#    
     @Slot()
     def on_actionLoad_Structural_Image_triggered(self):
         """
@@ -501,7 +453,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         nameroi = 'ROI'+ str(number)
         
         self.prepare_interface_ROI('sphere', coords=maxcoord,  nameroi = nameroi)    
-        self.spaghetti.create_ROI_sphere(nameroi, xmax/2, ymax/2, zmax/2, 2, self.roimethod, self.roi_color)
+        self.spaghetti.create_ROI_sphere(nameroi, xmax/2, ymax/2, zmax/2, 2, self.roimethod, self.roi_color.getRgbF(), self.roi_color.name())
              
         #add info of the ROI to ROI table
         self.updateROItable(nameroi, xmax/2, ymax/2, zmax/2, 2, self.roi_color.name())
@@ -527,7 +479,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if roi_type == 'sphere':
                 maxcoord = coords
                 self.radmax = np.amax(maxcoord)  
-                self.grbROImethod.setEnabled(True)
+#                self.grbROImethod.setEnabled(True)
                 
                 #setting some fixed values in the table
                 self.dspbxcoord.setRange(0, maxcoord[0])
@@ -617,11 +569,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tblROI.setRowHidden(i, hide)
         self.tblROI.resizeRowsToContents()
         
-    @Slot()
+    
     def on_chkroi_stateChanged(self, checked):
         '''
         Computing streamlines to show according to ROIs that are checked and their operators
         '''
+
         streamlines_ROIs = []
         last_chkd = 0
         for pos in range(0, len(self.list_chkROIS)):
@@ -648,8 +601,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                          self.list_ors[pos].setChecked(False)
                          self.list_ors[pos].setAutoExclusive(True)
                          
-                
-                        
+        
         self.spaghetti.compute_streamlines_ROIS()
         self.glWidget.updateGL()
                     
@@ -670,15 +622,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.spaghetti.update_ROI(prev_name_roi,  newname = item.text(), pos_activeroi = self.activeROI)
                 treeitem.setText(0, item.text()) 
     
-#    @Slot()
-#    def on_actionExpand_ROI_triggered(self):
-#        """
-#        Slot documentation goes here.
-#        """
-#        # TODO: not implemented yet
-#        raise NotImplementedError
-#    
-    
     @Slot()
     def on_actionRe_Cluster_triggered(self):
         """
@@ -697,16 +640,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.hSlReCluster.setValue(default)
         self.hSlReCluster.setMinimum(1)
         self.hSlReCluster.setMaximum(max)
-#    
-#    @Slot()
-#    def on_actionExpand_Clusters_triggered(self):
-#        """
-#        Slot documentation goes here.
-#        """
-#        # TODO: not implemented yet
-#        raise NotImplementedError
-#        
-        
+
     def initSpincamera(self, angle = 0.007 ):
 
         if self._spinCameraTimerInit:
@@ -793,13 +727,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
 
 if __name__ == "__main__":
-    #import sys
-    #app = QtGui.QApplication(sys.argv)
-    #mainWindow= MainWindow()
-    #mainWindow.show()
-    #sys.exit(app.exec_())
-	
+#    import sys
+#    app = QtGui.QApplication(sys.argv)
+#    mainWindow= MainWindow()
+#    mainWindow.show()
+#    sys.exit(app.exec_())
     mainWindow= MainWindow()
     mainWindow.show()
     
-    
+

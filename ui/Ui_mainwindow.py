@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/tractome/Tractome_last_version/ui/mainwindow.ui'
+# Form implementation generated from reading ui file '/home/dporro/Spaghetti/Tractome_last_version/ui/mainwindow.ui'
 #
-# Created: Sat Aug 16 15:29:47 2014
+# Created: Wed Sep 17 11:01:22 2014
 #      by: pyside-uic 0.2.13 running on PySide 1.1.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -281,9 +281,9 @@ class Ui_MainWindow(object):
         self.rdbInsSphere.setChecked(True)
         self.rdbInsSphere.setObjectName("rdbInsSphere")
         self.horizontalLayout_31.addWidget(self.rdbInsSphere)
-        self.rdbIntSphere = QtGui.QRadioButton(self.layoutWidget_8)
-        self.rdbIntSphere.setObjectName("rdbIntSphere")
-        self.horizontalLayout_31.addWidget(self.rdbIntSphere)
+        self.rdbtrackvis = QtGui.QRadioButton(self.layoutWidget_8)
+        self.rdbtrackvis.setObjectName("rdbtrackvis")
+        self.horizontalLayout_31.addWidget(self.rdbtrackvis)
         self.verticalLayout_3.addWidget(self.grb_tractomeroi)
         self.verticalLayout_5.addWidget(self.grbROImethod)
         self.groupBox_12 = QtGui.QGroupBox(self.centralWidget)
@@ -464,7 +464,7 @@ class Ui_MainWindow(object):
         self.chkbShowStruct.setText(QtGui.QApplication.translate("MainWindow", "Show Structural Image", None, QtGui.QApplication.UnicodeUTF8))
         self.grbROImethod.setTitle(QtGui.QApplication.translate("MainWindow", "ROI Method", None, QtGui.QApplication.UnicodeUTF8))
         self.rdbInsSphere.setText(QtGui.QApplication.translate("MainWindow", "Inside Sphere", None, QtGui.QApplication.UnicodeUTF8))
-        self.rdbIntSphere.setText(QtGui.QApplication.translate("MainWindow", "Intersect Sphere", None, QtGui.QApplication.UnicodeUTF8))
+        self.rdbtrackvis.setText(QtGui.QApplication.translate("MainWindow", "Trackvis Like", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox_12.setTitle(QtGui.QApplication.translate("MainWindow", "Re-Cluster", None, QtGui.QApplication.UnicodeUTF8))
         self.pbRecluster.setText(QtGui.QApplication.translate("MainWindow", "Apply", None, QtGui.QApplication.UnicodeUTF8))
         self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))

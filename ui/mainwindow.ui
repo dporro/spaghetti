@@ -632,9 +632,9 @@
                 </widget>
                </item>
                <item>
-                <widget class="QRadioButton" name="rdbIntSphere">
+                <widget class="QRadioButton" name="rdbtrackvis">
                  <property name="text">
-                  <string>Intersect Sphere</string>
+                  <string>Trackvis Like</string>
                  </property>
                 </widget>
                </item>

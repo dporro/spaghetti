@@ -22,6 +22,7 @@ class SphereTractome(Actor):
         self.radius = radius
         self.color=color
         self.colorname =colorname
+        self.dims = vol_shape
         
         self.methods = {0 : self.trackvis,
            1 : self.tractome_inside,
@@ -31,10 +32,10 @@ class SphereTractome(Actor):
         self.coords = coords
         self. indextracks  = indextracks
         # Generating index
-        self.activemethod() 
-        
         if affine is None: self.affine = np.eye(4, dtype = np.float32)
         else: self.affine = affine
+        if method ==0:
+            self.affine[1, 1] = self.affine[1, 1]*(-1)
         if vol_shape is not None:
             I, J, K = vol_shape
             centershift = img_to_ras_coords(np.array([[I/2., J/2., K/2.]]), affine)
@@ -42,6 +43,7 @@ class SphereTractome(Actor):
             affine[:3,3] = affine[:3, 3] - centeraffine[:3, 3]
         self.glaffine = (GLfloat * 16)(*tuple(self.affine.T.ravel()))
         
+        self.activemethod() 
        # vertices are still needed for something
         self.vertices = np.array([self.coordinates])
         
@@ -79,8 +81,10 @@ class SphereTractome(Actor):
         Computing ROI that reproduces Trackvis results. 
         Point is assumed to be in middle of the voxel and voxel 1 for them has index 1 and for us index 0.
         """
-        #Convert coords to lps first
         voxel = [self.coordinates[0]  - 0.5, self.coordinates[1]  - 0.5,  self.coordinates[2]  - 0.5]
+        #Convert coords to lps first
+        self.coords[:,1] = self.dims[1] - self.coords[:,1]
+        
         tmp = self.coords[:,0] - voxel[0]
         idx = np.where((tmp <= self.radius) & (tmp >=-self.radius))[0]
         tmp = self.coords[:,1][idx] - voxel[1]
@@ -90,7 +94,7 @@ class SphereTractome(Actor):
         tmp = self.coords[idx] - voxel
         idx = idx[np.where(np.sum((tmp * tmp), axis=1) <= (self.radius * self.radius))[0]]
         self.streamlines = np.unique(self.indextracks[idx])
-        
+    
         
     def tractome_inside(self):
         """
